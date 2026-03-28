@@ -1,0 +1,47 @@
+(in-package #:cl-py)
+
+(defun %print-registry ()
+  (dolist (adapter (list-adapters))
+    (format t "~A~%" (adapter-id adapter))
+    (format t "  name: ~A~%" (adapter-name adapter))
+    (format t "  module: ~A~%" (adapter-python-module adapter))
+    (format t "  capabilities: ~{~A~^, ~}~%" (adapter-capabilities adapter))
+    (format t "  summary: ~A~%" (cl-py.internal:adapter-summary adapter))))
+
+(defun %print-packaging-metadata ()
+  (let ((metadata (adapter-metadata "packaging")))
+    (format t "id: ~A~%" (getf metadata :id))
+    (format t "name: ~A~%" (getf metadata :name))
+    (format t "python-module: ~A~%" (getf metadata :python-module))
+    (format t "capabilities: ~{~A~^, ~}~%" (getf metadata :capabilities))
+    (format t "summary: ~A~%" (getf metadata :summary))))
+
+(defun %dispatch-packaging (rest)
+  (cond
+    ((null rest)
+     (cl-py.internal:print-cli-usage))
+    ((string= (first rest) "metadata")
+     (%print-packaging-metadata))
+    ((string= (first rest) "version")
+     (format t "~A~%" (adapter-module-version "packaging")))
+    ((and (string= (first rest) "normalize-version")
+          (second rest))
+     (format t "~A~%" (normalize-packaging-version (second rest))))
+    (t
+     (cl-py.internal:print-cli-usage))))
+
+(defun main ()
+  (handler-case
+      (let ((args (uiop:command-line-arguments)))
+        (cond
+          ((null args)
+           (cl-py.internal:print-cli-usage))
+          ((string= (first args) "registry")
+           (%print-registry))
+          ((string= (first args) "packaging")
+           (%dispatch-packaging (rest args)))
+          (t
+           (cl-py.internal:print-cli-usage))))
+    (adapter-error (condition)
+      (format *error-output* "~A~%" condition)
+      (uiop:quit 1))))
