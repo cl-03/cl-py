@@ -12,4 +12,5 @@
                (:file "src/registry")
                (:file "src/adapter")
                (:file "src/adapters/packaging")
+               (:file "src/adapters/dateutil")
                (:file "src/cli")))

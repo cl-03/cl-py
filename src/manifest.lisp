@@ -28,6 +28,8 @@
    :upstream-url (%manifest-value manifest :upstream-url path)
    :license (%manifest-value manifest :license path)
    :python-module (%manifest-value manifest :python-module path)
+   :python-distribution (or (getf manifest :python-distribution)
+                            (%manifest-value manifest :python-module path))
    :python-requirement (%manifest-value manifest :python-requirement path)
    :capabilities (copy-list (%manifest-value manifest :capabilities path))
    :summary (%manifest-value manifest :summary path)))

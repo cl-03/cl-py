@@ -6,4 +6,7 @@
   (format t "  registry~%")
   (format t "  packaging metadata~%")
   (format t "  packaging version~%")
-  (format t "  packaging normalize-version <value>~%"))
+  (format t "  packaging normalize-version <value>~%")
+  (format t "  dateutil metadata~%")
+  (format t "  dateutil version~%")
+  (format t "  dateutil parse-isodatetime <value>~%"))

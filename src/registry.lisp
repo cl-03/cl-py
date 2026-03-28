@@ -7,6 +7,7 @@
   upstream-url
   license
   python-module
+  python-distribution
   python-requirement
   capabilities
   summary)
@@ -44,17 +45,19 @@
           :upstream-url (adapter-upstream-url adapter)
           :license (adapter-license adapter)
           :python-module (adapter-python-module adapter)
+          :python-distribution (adapter-python-distribution adapter)
           :python-requirement (adapter-python-requirement adapter)
           :capabilities (adapter-capabilities adapter)
           :summary (cl-py.internal:adapter-summary adapter))))
 
 (defun adapter-module-version (adapter-id)
   (let* ((adapter (cl-py.internal:find-adapter-or-die adapter-id))
-         (module (adapter-python-module adapter))
+         (distribution (or (adapter-python-distribution adapter)
+                           (adapter-python-module adapter)))
          (lines (cl-py.internal:call-python-lines
                  (format nil
                          "import importlib.metadata~%print(importlib.metadata.version(~S))"
-                         module))))
+                         distribution))))
     (first lines)))
 
   (cl-py.internal:load-adapter-manifests)

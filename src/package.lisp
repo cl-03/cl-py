@@ -10,6 +10,7 @@
     #:adapter-upstream-url
     #:adapter-license
    #:adapter-python-module
+     #:adapter-python-distribution
     #:adapter-python-requirement
    #:adapter-capabilities
    #:list-adapters
@@ -17,6 +18,7 @@
    #:adapter-metadata
    #:adapter-module-version
    #:normalize-packaging-version
+     #:parse-dateutil-isodatetime
    #:main))
 
 (defpackage #:cl-py.internal
@@ -34,6 +36,7 @@
         #:adapter-upstream-url
         #:adapter-license
    #:adapter-python-module
+     #:adapter-python-distribution
         #:adapter-python-requirement
    #:adapter-capabilities
    #:adapter-summary
