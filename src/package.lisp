@@ -5,8 +5,12 @@
    #:adapter-not-found
    #:python-execution-error
    #:adapter-id
+    #:adapter-manifest-version
    #:adapter-name
+    #:adapter-upstream-url
+    #:adapter-license
    #:adapter-python-module
+    #:adapter-python-requirement
    #:adapter-capabilities
    #:list-adapters
    #:find-adapter
@@ -25,11 +29,16 @@
    #:*adapter-registry*
    #:adapter
    #:adapter-id
+        #:adapter-manifest-version
    #:adapter-name
+        #:adapter-upstream-url
+        #:adapter-license
    #:adapter-python-module
+        #:adapter-python-requirement
    #:adapter-capabilities
    #:adapter-summary
    #:register-adapter
+        #:load-adapter-manifests
    #:call-python-lines
    #:find-adapter-or-die
    #:print-cli-usage

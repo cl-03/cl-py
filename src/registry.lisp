@@ -2,8 +2,12 @@
 
 (defstruct adapter
   id
+  manifest-version
   name
+  upstream-url
+  license
   python-module
+  python-requirement
   capabilities
   summary)
 
@@ -35,8 +39,12 @@
 (defun adapter-metadata (adapter-id)
   (let ((adapter (cl-py.internal:find-adapter-or-die adapter-id)))
     (list :id (adapter-id adapter)
+          :manifest-version (adapter-manifest-version adapter)
           :name (adapter-name adapter)
+          :upstream-url (adapter-upstream-url adapter)
+          :license (adapter-license adapter)
           :python-module (adapter-python-module adapter)
+          :python-requirement (adapter-python-requirement adapter)
           :capabilities (adapter-capabilities adapter)
           :summary (cl-py.internal:adapter-summary adapter))))
 
@@ -48,3 +56,5 @@
                          "import importlib.metadata~%print(importlib.metadata.version(~S))"
                          module))))
     (first lines)))
+
+  (cl-py.internal:load-adapter-manifests)

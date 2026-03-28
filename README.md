@@ -8,9 +8,10 @@ Common Lisp users through explicit, reproducible adapter boundaries.
 This repository currently contains:
 
 - A project constitution and Speckit workflow templates
-- A Common Lisp code skeleton with an adapter registry
+- A Common Lisp code skeleton with a manifest-driven adapter registry
 - A development CLI
 - A first demonstration adapter for the Python `packaging` library
+- Python bootstrap scripts and a minimal CI workflow
 
 The current goal is not to hide Python. The goal is to make Python dependencies consumable from a
 stable Common Lisp surface.
@@ -22,13 +23,22 @@ cl-py/
 ├── cl-py.asd
 ├── cl-py-tests.asd
 ├── README.md
+├── adapters/
+│   └── manifests/
+│       └── packaging.sexp
+├── requirements/
+│   └── adapters/
+│       └── packaging.txt
 ├── scripts/
+│   ├── bootstrap-python.ps1
+│   ├── bootstrap-python.sh
 │   ├── dev-cli.lisp
 │   └── run-tests.lisp
 ├── src/
 │   ├── package.lisp
 │   ├── conditions.lisp
 │   ├── process.lisp
+│   ├── manifest.lisp
 │   ├── registry.lisp
 │   ├── adapter.lisp
 │   ├── cli.lisp
@@ -49,6 +59,14 @@ Install the demo Python dependency with:
 
 ```bash
 python -m pip install packaging
+```
+
+Or bootstrap the local adapter environment with:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/bootstrap-python.ps1
+# or
+sh scripts/bootstrap-python.sh
 ```
 
 ## Development CLI
@@ -92,9 +110,27 @@ Current capabilities:
 - Discover installed upstream module version
 - Normalize a version string through `packaging.version.Version`
 
+## Adapter Manifests
+
+Adapter discovery is now manifest-driven. Each adapter gets a manifest in
+[adapters/manifests/packaging.sexp](adapters/manifests/packaging.sexp) that declares:
+
+- Adapter id and name
+- Upstream Python module
+- Supported capabilities
+- License metadata
+- Python requirement range
+- Upstream project URL
+
+The Common Lisp registry loads these manifests at system startup.
+
+## CI
+
+GitHub Actions now installs Python, SBCL, the adapter requirements, and runs the smoke suite on
+push and pull request events.
+
 ## Next Steps
 
-- Add adapter manifests instead of hard-coded registry entries
-- Add reproducible Python environment bootstrap scripts
 - Add more adapters for selected Python libraries
-- Add CI to exercise adapter compatibility contracts
+- Expand CI to exercise richer adapter compatibility contracts
+- Add manifest validation and richer adapter contract tests

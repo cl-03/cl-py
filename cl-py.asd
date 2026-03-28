@@ -8,6 +8,7 @@
   :components ((:file "src/package")
                (:file "src/conditions")
                (:file "src/process")
+               (:file "src/manifest")
                (:file "src/registry")
                (:file "src/adapter")
                (:file "src/adapters/packaging")

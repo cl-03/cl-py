@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install SBCL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sbcl
+
+      - name: Bootstrap Python adapter environment
+        run: sh scripts/bootstrap-python.sh
+
+      - name: Run registry CLI
+        env:
+          CL_PY_PYTHON: .venv/bin/python
+        run: sbcl --script scripts/dev-cli.lisp registry
+
+      - name: Run smoke tests
+        env:
+          CL_PY_PYTHON: .venv/bin/python
+        run: sbcl --script scripts/run-tests.lisp

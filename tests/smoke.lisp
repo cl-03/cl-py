@@ -33,6 +33,12 @@
   (let ((metadata (cl-py:adapter-metadata "packaging")))
     (%check (string= "packaging" (getf metadata :id))
             "metadata exposes packaging adapter id")
+    (%check (string= "1.0" (getf metadata :manifest-version))
+      "metadata exposes manifest version")
+    (%check (search "github.com/pypa/packaging" (getf metadata :upstream-url))
+      "metadata exposes upstream URL")
+    (%check (string= "packaging>=24.0,<26.0" (getf metadata :python-requirement))
+      "metadata exposes python requirement range")
     (%check (member "normalize-version" (getf metadata :capabilities) :test #'string=)
             "metadata exposes normalize-version capability")))
 
