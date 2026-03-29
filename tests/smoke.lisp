@@ -7,7 +7,8 @@
                 #:list-adapters
                 #:normalize-packaging-version
                 #:parse-dateutil-isodatetime
-                #:slugify-text)
+                #:slugify-text
+                #:validate-jsonschema-instance)
   (:export #:run-tests))
 
 (in-package #:cl-py-tests)
@@ -27,7 +28,9 @@
   (%check (not (null (cl-py:find-adapter "dateutil")))
           "dateutil adapter is registered")
   (%check (not (null (cl-py:find-adapter "slugify")))
-          "slugify adapter is registered"))
+          "slugify adapter is registered")
+  (%check (not (null (cl-py:find-adapter "jsonschema")))
+          "jsonschema adapter is registered"))
 
 (defun %adapter-ids-test ()
   (%check (member "packaging"
@@ -41,7 +44,11 @@
   (%check (member "slugify"
                   (mapcar #'cl-py:adapter-id (cl-py:list-adapters))
                   :test #'string=)
-          "registry exposes slugify adapter id"))
+          "registry exposes slugify adapter id")
+  (%check (member "jsonschema"
+                  (mapcar #'cl-py:adapter-id (cl-py:list-adapters))
+                  :test #'string=)
+          "registry exposes jsonschema adapter id"))
 
 (defun %packaging-metadata-test ()
   (let ((metadata (cl-py:adapter-metadata "packaging")))
@@ -88,6 +95,21 @@
     (%check (member "slugify-text" (getf metadata :capabilities) :test #'string=)
             "metadata exposes slugify-text capability")))
 
+(defun %jsonschema-metadata-test ()
+  (let ((metadata (cl-py:adapter-metadata "jsonschema")))
+    (%check (string= "jsonschema" (getf metadata :id))
+            "metadata exposes jsonschema adapter id")
+    (%check (string= "1.0" (getf metadata :manifest-version))
+            "metadata exposes jsonschema manifest version")
+    (%check (search "github.com/python-jsonschema/jsonschema" (getf metadata :upstream-url))
+            "metadata exposes jsonschema upstream URL")
+    (%check (string= "jsonschema" (getf metadata :python-distribution))
+            "metadata exposes jsonschema distribution name")
+    (%check (string= "jsonschema>=4.0,<5.0" (getf metadata :python-requirement))
+            "metadata exposes jsonschema requirement range")
+    (%check (member "validate-instance" (getf metadata :capabilities) :test #'string=)
+            "metadata exposes validate-instance capability")))
+
 (defun %optional-packaging-integration-test ()
   (handler-case
       (%check (string= "1.0rc1" (normalize-packaging-version "1.0rc1"))
@@ -114,6 +136,17 @@
       (declare (ignore condition))
       (format t "SKIP slugify integration requires Python + python-slugify~%"))))
 
+(defun %optional-jsonschema-integration-test ()
+        (handler-case
+                        (%check (string= "valid"
+                                                                                         (validate-jsonschema-instance
+                                                                                                "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}"
+                                                                                                "{\"name\":\"cl-py\"}"))
+                                                        "jsonschema integration validates a JSON instance")
+                (error (condition)
+                        (declare (ignore condition))
+                        (format t "SKIP jsonschema integration requires Python + jsonschema~%"))))
+
 (defun run-tests ()
   (setf *failures* 0)
   (%adapter-registry-test)
@@ -121,9 +154,11 @@
   (%packaging-metadata-test)
   (%dateutil-metadata-test)
   (%slugify-metadata-test)
+        (%jsonschema-metadata-test)
   (%optional-packaging-integration-test)
   (%optional-dateutil-integration-test)
   (%optional-slugify-integration-test)
+        (%optional-jsonschema-integration-test)
   (when (plusp *failures*)
     (error "Smoke tests failed: ~D" *failures*))
   (format t "All smoke tests completed.~%"))

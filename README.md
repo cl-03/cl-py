@@ -10,7 +10,7 @@ This repository currently contains:
 - A project constitution and Speckit workflow templates
 - A Common Lisp code skeleton with a manifest-driven adapter registry
 - A development CLI
-- Demonstration adapters for the Python `packaging`, `python-dateutil`, and `python-slugify` libraries
+- Demonstration adapters for the Python `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema` libraries
 - Python bootstrap scripts and a minimal CI workflow
 
 The current goal is not to hide Python. The goal is to make Python dependencies consumable from a
@@ -26,11 +26,13 @@ cl-py/
 ├── adapters/
 │   └── manifests/
 │       ├── dateutil.sexp
+│       ├── jsonschema.sexp
 │       ├── packaging.sexp
 │       └── slugify.sexp
 ├── requirements/
 │   └── adapters/
 │       ├── dateutil.txt
+│       ├── jsonschema.txt
 │       ├── packaging.txt
 │       └── slugify.txt
 ├── scripts/
@@ -48,6 +50,7 @@ cl-py/
 │   ├── cli.lisp
 │   └── adapters/
 │       ├── dateutil.lisp
+│       ├── jsonschema.lisp
 │       ├── packaging.lisp
 │       └── slugify.lisp
 └── tests/
@@ -60,7 +63,7 @@ cl-py/
 - ASDF available
 - Quicklisp optional but recommended for interactive local development
 - Python 3 available on `PATH` or via `CL_PY_PYTHON`
-- For the current demo adapters: Python packages `packaging`, `python-dateutil`, and `python-slugify`
+- For the current demo adapters: Python packages `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema`
 
 Install the demo Python dependency with:
 
@@ -68,6 +71,7 @@ Install the demo Python dependency with:
 python -m pip install packaging
 python -m pip install python-dateutil
 python -m pip install python-slugify
+python -m pip install jsonschema
 ```
 
 Or bootstrap the local adapter environment with:
@@ -95,6 +99,8 @@ sbcl --script scripts/dev-cli.lisp dateutil metadata
 sbcl --script scripts/dev-cli.lisp dateutil parse-isodatetime 2026-03-29T10:20:30+00:00
 sbcl --script scripts/dev-cli.lisp slugify metadata
 sbcl --script scripts/dev-cli.lisp slugify slugify-text "Hello Common Lisp"
+sbcl --script scripts/dev-cli.lisp jsonschema metadata
+sbcl --script scripts/dev-cli.lisp jsonschema validate-instance '{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}' '{"name":"cl-py"}'
 ```
 
 If Python is not on `PATH`, set:
@@ -152,6 +158,17 @@ Current capabilities:
 - Discover adapter metadata
 - Discover installed upstream distribution version
 - Convert text to a URL-friendly slug via `slugify.slugify`
+
+## Fourth Adapter: jsonschema
+
+The fourth adapter targets `jsonschema` because it adds structured data validation to the adapter
+set and exercises a realistic multi-argument command surface.
+
+Current capabilities:
+
+- Discover adapter metadata
+- Discover installed upstream distribution version
+- Validate a JSON instance against a JSON Schema
 
 ## Adapter Manifests
 

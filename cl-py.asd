@@ -14,4 +14,5 @@
                (:file "src/adapters/packaging")
                (:file "src/adapters/dateutil")
                (:file "src/adapters/slugify")
+               (:file "src/adapters/jsonschema")
                (:file "src/cli")))

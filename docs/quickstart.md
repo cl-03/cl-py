@@ -47,6 +47,7 @@ sbcl --script scripts/dev-cli.lisp dateutil metadata
 sbcl --script scripts/dev-cli.lisp dateutil parse-isodatetime 2026-03-29T10:20:30+00:00
 sbcl --script scripts/dev-cli.lisp slugify metadata
 sbcl --script scripts/dev-cli.lisp slugify slugify-text "Hello Common Lisp"
+sbcl --script scripts/dev-cli.lisp jsonschema metadata
 ```
 
 ## 3. Load with ASDF from the Repository Root
@@ -68,6 +69,10 @@ Then call exported functions directly:
 (cl-py:parse-dateutil-isodatetime "2026-03-29T10:20:30+00:00")
 (cl-py:adapter-metadata "slugify")
 (cl-py:slugify-text "Hello Common Lisp")
+(cl-py:adapter-metadata "jsonschema")
+(cl-py:validate-jsonschema-instance
+ "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}"
+ "{\"name\":\"cl-py\"}")
 ```
 
 ## 4. Load with Quicklisp for Local Development
