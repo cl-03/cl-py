@@ -201,7 +201,8 @@ Current status:
   exclusion filters, group-selected output, row sorting, row offsets, row limits,
   per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export,
   per-result pagination metadata, aggregate report diffs, snapshot deletion, snapshot pruning,
-  lifecycle dry-run previews, and explicit force confirmation for destructive cleanup.
+  lifecycle dry-run previews, explicit force confirmation for destructive cleanup, and
+  structured lifecycle audit metadata in cleanup responses.
 - This does not replace the broader database-backed roadmap. It reduces risk by establishing local
   persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 

@@ -88,6 +88,20 @@
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
     (parse-json (uiop:read-file-string path))))
 
+(defun %store-lifecycle-mode (dry-run force)
+  (declare (ignore force))
+  (if dry-run
+      "dry-run"
+      "force"))
+
+(defun %store-lifecycle-audit-object (operation directory dry-run force &rest fields)
+  (list :object
+        (cons "operation" operation)
+        (cons "mode" (%store-lifecycle-mode dry-run force))
+        (cons "executed-at" (%snapshot-timestamp-string))
+        (cons "store-root" (namestring (%store-root directory)))
+        (cons "fields" (list :object fields))))
+
 (defun delete-registry-snapshot (snapshot-id &key directory dry-run force)
   (let ((path (%registry-snapshot-path snapshot-id directory)))
     (unless (probe-file path)
@@ -101,6 +115,14 @@
           (cons "dry-run" (if dry-run :true :false))
           (cons "forced" (if (and force (not dry-run)) :true :false))
           (cons "would-delete" (if dry-run :true :false))
+          (cons "audit"
+            (%store-lifecycle-audit-object
+             "delete-registry"
+             directory
+             dry-run
+             force
+             (cons "snapshot-id" snapshot-id)
+             (cons "path" (namestring path))))
           (cons "snapshot-id" snapshot-id)
           (cons "path" (namestring path)))))
 
@@ -118,6 +140,15 @@
     (list :object
           (cons "dry-run" (if dry-run :true :false))
           (cons "forced" (if (and force (not dry-run)) :true :false))
+          (cons "audit"
+            (%store-lifecycle-audit-object
+             "prune-registry"
+             directory
+             dry-run
+             force
+             (cons "keep-count" keep-count)
+             (cons "kept-count" (length kept-snapshot-ids))
+             (cons "deleted-count" (length deleted-snapshot-ids))))
           (cons "keep-count" keep-count)
           (cons "kept-count" (length kept-snapshot-ids))
           (cons "deleted-count" (length deleted-snapshot-ids))

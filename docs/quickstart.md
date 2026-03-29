@@ -136,6 +136,8 @@ per-result pagination metadata such as total, returned, and remaining row counts
 operations for deleting snapshots and pruning older snapshots while keeping the newest N entries.
 Use `--dry-run` on delete/prune commands to preview changes without modifying the store, and
 use `--force` to execute the actual destructive operation.
+Lifecycle delete/prune JSON responses also include an `audit` object with the operation name,
+execution mode, timestamp, and store root for downstream logging.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

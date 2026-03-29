@@ -217,6 +217,7 @@ Current capabilities:
 - Delete a saved registry snapshot by id with explicit force confirmation
 - Prune older registry snapshots while keeping the newest N ids with explicit force confirmation
 - Preview delete and prune lifecycle operations with dry-run mode before changing disk state
+- Emit structured lifecycle audit metadata for delete and prune operations
 - Query the latest, summarized, and diffed view of stored snapshots
 - Query per-adapter history across stored snapshots
 - Build aggregate snapshot reports grouped by license and capability
