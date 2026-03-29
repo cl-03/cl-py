@@ -136,17 +136,39 @@
   (format t "  time parse-iso <timestamp|@path|->~%")
   (format t "  time format-iso <timestamp-form|@path|->~%"))
 
+(defun %print-time-help ()
+  (%print-time-usage)
+  (format t "~%Input Forms:~%")
+  (format t "  Inline ISO-8601 text or Lisp timestamp forms~%")
+  (format t "  @path to read from a file~%")
+  (format t "  - to read from standard input~%")
+  (format t "~%Examples:~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp time parse-iso 2026-03-29T10:20:30Z~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp time format-iso '(:timestamp :year 2026 :month 3 :day 29 :hour 10 :minute 20 :second 30 :offset-minutes 0)'~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp time parse-iso @tmp-time.txt~%"))
+
 (defun dispatch-time-command (args)
   (cond
     ((null args)
+     (cl-py.internal:signal-cli-usage-error "time requires a subcommand" #'%print-time-usage))
+    ((cl-py.internal:help-flag-p (first args))
      (%print-time-usage))
     ((string= (first args) "parse-iso")
      (if (< (length (rest args)) 1)
-         (%print-time-usage)
+         (cl-py.internal:signal-cli-usage-error "time parse-iso requires a timestamp value" #'%print-time-usage)
          (%time-cli-parse-iso (second args))))
     ((string= (first args) "format-iso")
      (if (< (length (rest args)) 1)
-         (%print-time-usage)
+         (cl-py.internal:signal-cli-usage-error "time format-iso requires a timestamp form" #'%print-time-usage)
          (%time-cli-format-iso (second args))))
     (t
-     (%print-time-usage))))
+     (cl-py.internal:signal-cli-usage-error
+      (format nil "Unknown time subcommand: ~A" (first args))
+      #'%print-time-usage))))
+
+(cl-py.internal:register-top-level-cli-command
+ "time"
+ #'dispatch-time-command
+ :usage "time <subcommand>"
+ :summary "Native ISO-8601 timestamp parse and format helpers"
+ :detail-printer #'%print-time-help)

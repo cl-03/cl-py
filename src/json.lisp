@@ -329,21 +329,43 @@
   (format t "  json emit <lisp-value|@path|->~%")
   (format t "  json normalize <json|@path|->~%"))
 
+(defun %print-json-help ()
+  (%print-json-usage)
+  (format t "~%Input Forms:~%")
+  (format t "  Inline JSON or Lisp data~%")
+  (format t "  @path to read from a file~%")
+  (format t "  - to read from standard input~%")
+  (format t "~%Examples:~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp json parse '{\"name\":\"cl-py\"}'~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp json emit '((\"name\" . \"cl-py\"))'~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp json normalize @tmp.json~%"))
+
 (defun dispatch-json-command (args)
   (cond
     ((null args)
+     (cl-py.internal:signal-cli-usage-error "json requires a subcommand" #'%print-json-usage))
+    ((cl-py.internal:help-flag-p (first args))
      (%print-json-usage))
     ((string= (first args) "parse")
      (if (< (length (rest args)) 1)
-         (%print-json-usage)
+         (cl-py.internal:signal-cli-usage-error "json parse requires an input value" #'%print-json-usage)
          (%json-cli-parse (second args))))
     ((string= (first args) "emit")
      (if (< (length (rest args)) 1)
-         (%print-json-usage)
+         (cl-py.internal:signal-cli-usage-error "json emit requires an input value" #'%print-json-usage)
          (%json-cli-emit (second args))))
     ((string= (first args) "normalize")
      (if (< (length (rest args)) 1)
-         (%print-json-usage)
+         (cl-py.internal:signal-cli-usage-error "json normalize requires an input value" #'%print-json-usage)
          (%json-cli-normalize (second args))))
     (t
-     (%print-json-usage))))
+     (cl-py.internal:signal-cli-usage-error
+      (format nil "Unknown json subcommand: ~A" (first args))
+      #'%print-json-usage))))
+
+(cl-py.internal:register-top-level-cli-command
+ "json"
+ #'dispatch-json-command
+ :usage "json <subcommand>"
+ :summary "Native JSON parse, emit, and normalize helpers"
+ :detail-printer #'%print-json-help)

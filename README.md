@@ -102,6 +102,10 @@ sh scripts/bootstrap-python.sh
 Run the development CLI with SBCL:
 
 ```bash
+sbcl --script scripts/dev-cli.lisp help
+sbcl --script scripts/dev-cli.lisp help json
+sbcl --script scripts/dev-cli.lisp help registry
+sbcl --script scripts/dev-cli.lisp help packaging
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
@@ -131,6 +135,15 @@ For REPL-oriented workflows and ASDF loading examples, see [docs/quickstart.md](
 
 For shell environments where inline quoting is awkward, the native JSON, time, URI, and HTTP
 commands also accept `@path` to read input from a file, or `-` to read from standard input.
+
+The CLI now distinguishes usage errors from runtime errors: invalid command shapes exit with code
+`2`, while runtime or dependency failures exit with code `1`.
+
+Global help now lists adapter commands by adapter group, and `help <command>` works for both
+native command groups such as `json` and adapter groups such as `packaging`.
+
+Native command help also includes input-form guidance and runnable examples, so `help json`,
+`help time`, `help uri`, and `help http` can be used as command-local reference pages.
 
 ## Test Runner
 

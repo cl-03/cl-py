@@ -3,6 +3,7 @@
   (:export
    #:adapter-error
    #:adapter-not-found
+    #:cli-usage-error
    #:python-execution-error
    #:adapter-id
     #:adapter-manifest-version
@@ -52,9 +53,14 @@
    #:adapter-summary
    #:register-adapter
         #:load-adapter-manifests
+  #:register-top-level-cli-command
      #:register-cli-command
+  #:dispatch-top-level-command
      #:dispatch-adapter-command
    #:call-python-lines
    #:find-adapter-or-die
+  #:help-flag-p
    #:print-cli-usage
+  #:print-command-help
+  #:signal-cli-usage-error
    #:string-join))

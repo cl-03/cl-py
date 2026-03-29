@@ -26,26 +26,35 @@
     (format t "capabilities: ~{~A~^, ~}~%" (getf metadata :capabilities))
     (format t "summary: ~A~%" (getf metadata :summary))))
 
+(defun %registry-command-handler (args)
+  (if (null args)
+      (%print-registry)
+      (cl-py.internal:signal-cli-usage-error
+       "registry does not accept positional arguments"
+       #'%print-registry-usage)))
+
+(defun %print-registry-usage ()
+  (format t "Subcommands: none~%")
+  (format t "This command prints the full manifest-backed adapter registry.~%"))
+
 (defun main ()
   (handler-case
       (let ((args (uiop:command-line-arguments)))
-        (cond
-          ((null args)
-           (cl-py.internal:print-cli-usage))
-          ((string= (first args) "registry")
-           (%print-registry))
-          ((string= (first args) "json")
-           (dispatch-json-command (rest args)))
-          ((string= (first args) "time")
-           (dispatch-time-command (rest args)))
-          ((string= (first args) "uri")
-           (dispatch-uri-command (rest args)))
-          ((string= (first args) "http")
-           (dispatch-http-command (rest args)))
-          ((find-adapter (first args))
-           (cl-py.internal:dispatch-adapter-command (first args) (rest args)))
-          (t
-           (cl-py.internal:print-cli-usage))))
+        (if (null args)
+            (cl-py.internal:print-cli-usage)
+            (cl-py.internal:dispatch-top-level-command args)))
+    (cli-usage-error (condition)
+      (format *error-output* "~A~%" condition)
+      (let ((*standard-output* *error-output*))
+        (funcall (cli-usage-printer condition)))
+      (uiop:quit 2))
     (adapter-error (condition)
       (format *error-output* "~A~%" condition)
       (uiop:quit 1))))
+
+(cl-py.internal:register-top-level-cli-command
+ "registry"
+ #'%registry-command-handler
+ :usage "registry"
+ :summary "List registered adapters with manifest metadata"
+ :detail-printer #'%print-registry-usage)

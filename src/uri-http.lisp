@@ -221,32 +221,75 @@
 (defun %print-uri-usage ()
   (format t "  uri normalize <uri|@path|->~%"))
 
+(defun %print-uri-help ()
+  (%print-uri-usage)
+  (format t "~%Input Forms:~%")
+  (format t "  Inline URI text~%")
+  (format t "  @path to read from a file~%")
+  (format t "  - to read from standard input~%")
+  (format t "~%Examples:~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp uri normalize HTTP://Example.COM:80/path?q=1~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp uri normalize @tmp-uri.txt~%"))
+
 (defun %print-http-usage ()
   (format t "  http fetch-text <uri|@path|->~%")
   (format t "  http fetch-json <uri|@path|->~%"))
 
+(defun %print-http-help ()
+  (%print-http-usage)
+  (format t "~%Input Forms:~%")
+  (format t "  Inline URI text~%")
+  (format t "  @path to read from a file~%")
+  (format t "  - to read from standard input~%")
+  (format t "~%Examples:~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp http fetch-text @tmp-uri.txt~%"))
+
 (defun dispatch-uri-command (args)
   (cond
     ((null args)
+     (cl-py.internal:signal-cli-usage-error "uri requires a subcommand" #'%print-uri-usage))
+    ((cl-py.internal:help-flag-p (first args))
      (%print-uri-usage))
     ((string= (first args) "normalize")
      (if (< (length (rest args)) 1)
-         (%print-uri-usage)
+         (cl-py.internal:signal-cli-usage-error "uri normalize requires a URI value" #'%print-uri-usage)
          (%uri-cli-normalize (second args))))
     (t
-     (%print-uri-usage))))
+     (cl-py.internal:signal-cli-usage-error
+      (format nil "Unknown uri subcommand: ~A" (first args))
+      #'%print-uri-usage))))
 
 (defun dispatch-http-command (args)
   (cond
     ((null args)
+     (cl-py.internal:signal-cli-usage-error "http requires a subcommand" #'%print-http-usage))
+    ((cl-py.internal:help-flag-p (first args))
      (%print-http-usage))
     ((string= (first args) "fetch-text")
      (if (< (length (rest args)) 1)
-         (%print-http-usage)
+         (cl-py.internal:signal-cli-usage-error "http fetch-text requires a URI value" #'%print-http-usage)
          (%http-cli-fetch-text (second args))))
     ((string= (first args) "fetch-json")
      (if (< (length (rest args)) 1)
-         (%print-http-usage)
+         (cl-py.internal:signal-cli-usage-error "http fetch-json requires a URI value" #'%print-http-usage)
          (%http-cli-fetch-json (second args))))
     (t
-     (%print-http-usage))))
+     (cl-py.internal:signal-cli-usage-error
+      (format nil "Unknown http subcommand: ~A" (first args))
+      #'%print-http-usage))))
+
+(cl-py.internal:register-top-level-cli-command
+ "uri"
+ #'dispatch-uri-command
+ :usage "uri <subcommand>"
+ :summary "Native URI normalization helpers"
+ :detail-printer #'%print-uri-help)
+
+(cl-py.internal:register-top-level-cli-command
+ "http"
+ #'dispatch-http-command
+ :usage "http <subcommand>"
+ :summary "Native HTTP text and JSON fetch helpers"
+ :detail-printer #'%print-http-help)

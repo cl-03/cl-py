@@ -40,6 +40,10 @@ export CL_PY_PYTHON=.venv/bin/python
 ## 2. Run the CLI Quickly
 
 ```sh
+sbcl --script scripts/dev-cli.lisp help
+sbcl --script scripts/dev-cli.lisp help http
+sbcl --script scripts/dev-cli.lisp help registry
+sbcl --script scripts/dev-cli.lisp help packaging
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
@@ -73,6 +77,15 @@ sbcl --script scripts/dev-cli.lisp time parse-iso @tmp-time.txt
 ```
 
 The same `@file` and `-` input rules also apply to URI and HTTP commands.
+
+If you give a malformed command, the CLI exits with code `2`. Runtime failures, such as a bad
+HTTP response or missing Python adapter dependency, exit with code `1`.
+
+Use `help <command>` to inspect either a native command group like `http` or an adapter group like
+`packaging` without running the command itself.
+
+For native command groups, help output also includes accepted input forms and ready-to-run
+examples, which is useful on shells where quoting rules vary.
 
 ## 3. Load with ASDF from the Repository Root
 

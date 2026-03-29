@@ -17,3 +17,6 @@
              (format stream "Python execution failed.~%Command: ~A~%Output:~%~A"
                      (failed-command condition)
                      (failed-output condition)))))
+
+(define-condition cli-usage-error (adapter-error)
+  ((usage-printer :initarg :usage-printer :reader cli-usage-printer)))
