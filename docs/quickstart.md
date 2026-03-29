@@ -44,6 +44,7 @@ sbcl --script scripts/dev-cli.lisp help
 sbcl --script scripts/dev-cli.lisp help http
 sbcl --script scripts/dev-cli.lisp help registry
 sbcl --script scripts/dev-cli.lisp help packaging
+sbcl --script scripts/dev-cli.lisp help store
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
@@ -53,6 +54,8 @@ sbcl --script scripts/dev-cli.lisp time format-iso '(:timestamp :year 2026 :mont
 sbcl --script scripts/dev-cli.lisp uri normalize HTTP://Example.COM:80/path?q=1
 sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
+sbcl --script scripts/dev-cli.lisp store snapshot-registry
+sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -86,6 +89,9 @@ Use `help <command>` to inspect either a native command group like `http` or an 
 
 For native command groups, help output also includes accepted input forms and ready-to-run
 examples, which is useful on shells where quoting rules vary.
+
+Registry snapshots are stored under `.cl-py-store/registry/` by default. Set `CL_PY_STORE_DIR`
+before running the CLI if you want to keep snapshots in another directory.
 
 ## 3. Load with ASDF from the Repository Root
 

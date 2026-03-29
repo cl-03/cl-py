@@ -12,6 +12,7 @@ This repository currently contains:
 - A native JSON foundation for parse, emit, and normalization workflows
 - A native time normalization layer for ISO-8601 parsing and formatting
 - A native URI normalization and HTTP text/JSON fetch layer
+- A native registry snapshot store for optional local persistence
 - A development CLI
 - Demonstration adapters for the Python `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema` libraries
 - Python bootstrap scripts and a minimal CI workflow
@@ -106,6 +107,7 @@ sbcl --script scripts/dev-cli.lisp help
 sbcl --script scripts/dev-cli.lisp help json
 sbcl --script scripts/dev-cli.lisp help registry
 sbcl --script scripts/dev-cli.lisp help packaging
+sbcl --script scripts/dev-cli.lisp help store
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
@@ -115,6 +117,8 @@ sbcl --script scripts/dev-cli.lisp time format-iso '(:timestamp :year 2026 :mont
 sbcl --script scripts/dev-cli.lisp uri normalize HTTP://Example.COM:80/path?q=1
 sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
+sbcl --script scripts/dev-cli.lisp store snapshot-registry
+sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -143,7 +147,10 @@ Global help now lists adapter commands by adapter group, and `help <command>` wo
 native command groups such as `json` and adapter groups such as `packaging`.
 
 Native command help also includes input-form guidance and runnable examples, so `help json`,
-`help time`, `help uri`, and `help http` can be used as command-local reference pages.
+`help time`, `help uri`, `help http`, and `help store` can be used as command-local reference pages.
+
+The native store layer persists registry snapshots under `.cl-py-store/registry/` by default.
+Set `CL_PY_STORE_DIR` to redirect snapshot storage elsewhere.
 
 ## Test Runner
 
@@ -193,6 +200,18 @@ Current constraints:
 
 - HTTPS is not implemented yet
 - The first transport slice targets SBCL because it uses native socket support
+
+## Native Registry Snapshot Store
+
+The fourth native Common Lisp capability slice adds a small local persistence layer for registry
+snapshots.
+
+Current capabilities:
+
+- Save the current adapter registry as a canonical JSON snapshot
+- List saved registry snapshots from local storage
+- Load a snapshot back into the native JSON data model
+- Redirect snapshot storage with `CL_PY_STORE_DIR`
 
 ## First Adapter: packaging
 

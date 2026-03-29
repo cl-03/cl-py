@@ -12,13 +12,16 @@
                 #:fetch-text
                 #:find-adapter
                 #:format-iso-timestamp
+                #:load-registry-snapshot
                 #:list-adapters
+                #:list-registry-snapshots
                 #:normalize-uri
                 #:normalize-json
                 #:normalize-packaging-version
                 #:parse-json
                 #:parse-iso-timestamp
                 #:parse-dateutil-isodatetime
+                #:save-registry-snapshot
                 #:slugify-text
                 #:validate-jsonschema-instance)
   (:export #:run-tests))
@@ -267,6 +270,31 @@
                                                          "native http fetch-json preserves object fields")))
          :content-type "application/json"))
 
+(defun %with-temporary-store-directory (thunk)
+  (let ((root (merge-pathnames (format nil "cl-py-store-test-~D/" (get-universal-time))
+                               (uiop:temporary-directory))))
+    (ensure-directories-exist (merge-pathnames "probe.txt" root))
+    (unwind-protect
+        (funcall thunk root)
+      (ignore-errors (uiop:delete-directory-tree root :validate t)))))
+
+(defun %native-store-snapshot-test ()
+  (%with-temporary-store-directory
+   (lambda (directory)
+     (let* ((path (save-registry-snapshot :directory directory :snapshot-id "smoke-registry"))
+            (snapshots (list-registry-snapshots :directory directory))
+            (snapshot (load-registry-snapshot "smoke-registry" :directory directory))
+            (entries (cdr snapshot))
+            (adapters (cdr (assoc "adapters" entries :test #'string=))))
+       (%check (probe-file path)
+               "native store writes registry snapshots to disk")
+       (%check (equal '("smoke-registry") snapshots)
+               "native store lists registry snapshots deterministically")
+       (%check (string= "smoke-registry" (cdr (assoc "snapshot-id" entries :test #'string=)))
+               "native store preserves snapshot identifiers")
+       (%check (and (vectorp adapters) (plusp (length adapters)))
+               "native store loads adapter snapshot payloads")))))
+
 (defun %cli-help-output-test ()
   (let ((output (%capture-output #'cl-py.internal:print-cli-usage)))
     (%check (search "help [command]" output)
@@ -275,6 +303,8 @@
             "cli usage explains how to get detailed command help")
     (%check (search "json <subcommand>" output)
             "cli usage includes registered native top-level commands")
+    (%check (search "store <subcommand>" output)
+            "cli usage includes the store command group")
     (%check (search "Adapter Command Groups:" output)
             "cli usage groups adapter commands by adapter")
     (%check (search "packaging" output)
@@ -311,6 +341,16 @@
             "http help prints subcommand usage")
     (%check (search "127.0.0.1:8080" output)
             "http help includes concrete examples")))
+
+(defun %cli-store-help-test ()
+  (let ((output (%capture-output (lambda ()
+                                   (cl-py.internal:print-command-help "store")))))
+    (%check (search "snapshot-registry" output)
+            "store help prints store subcommands")
+    (%check (search "CL_PY_STORE_DIR" output)
+            "store help describes store directory override")
+    (%check (search "nightly" output)
+            "store help includes snapshot examples")))
 
 (defun %cli-registry-help-test ()
   (let ((output (%capture-output (lambda ()
@@ -382,10 +422,12 @@
         (%native-uri-normalize-test)
         (%native-http-fetch-text-test)
         (%native-http-fetch-json-test)
+        (%native-store-snapshot-test)
         (%cli-help-output-test)
         (%cli-usage-error-test)
         (%cli-command-help-test)
         (%cli-http-help-test)
+        (%cli-store-help-test)
           (%cli-registry-help-test)
           (%cli-adapter-help-test)
   (%optional-packaging-integration-test)

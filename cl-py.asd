@@ -14,6 +14,7 @@
                (:file "src/json")
                (:file "src/time")
                (:file "src/uri-http")
+               (:file "src/store")
                (:file "src/adapters/packaging")
                (:file "src/adapters/dateutil")
                (:file "src/adapters/slugify")

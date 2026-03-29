@@ -110,12 +110,22 @@ Useful commands:
 
 ```sh
 sbcl --script scripts/dev-cli.lisp registry
+sbcl --script scripts/dev-cli.lisp store snapshot-registry
+sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp dateutil metadata
 sbcl --script scripts/dev-cli.lisp slugify metadata
 sbcl --script scripts/dev-cli.lisp jsonschema metadata
 sbcl --script scripts/run-tests.lisp
 ```
+
+## Local Snapshot Store
+
+The native store layer writes registry snapshots under `.cl-py-store/registry/` by default.
+
+- Use `CL_PY_STORE_DIR` to redirect the store root to another directory
+- Snapshots are written as canonical JSON for easy inspection and reuse
+- The current first slice is intentionally small and focused on registry persistence
 
 ## CI Expectations
 

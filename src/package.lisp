@@ -26,6 +26,9 @@
    #:normalize-uri
    #:fetch-text
    #:fetch-json
+   #:save-registry-snapshot
+   #:list-registry-snapshots
+   #:load-registry-snapshot
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
      #:slugify-text

@@ -25,6 +25,8 @@ The current shortlist uses five filters:
   `python-slugify`, and `jsonschema`
 - A curated Common Lisp ecosystem catalog that identifies credible native libraries for HTTP, URI
   handling, HTML generation, database access, JSON, concurrency, CLI work, and time handling
+- Native Common Lisp capability slices for JSON, time normalization, URI/HTTP work, CLI ergonomics,
+  and local registry snapshot persistence
 
 The roadmap below shifts new feature work toward native Common Lisp modules while keeping the
 existing adapter discipline available for explicit exception cases.
@@ -48,6 +50,10 @@ existing adapter discipline available for explicit exception cases.
 4. CLI ergonomics
 5. Data and query layer
 6. Concurrency utilities
+
+The current repository has now completed a lightweight first persistence slice through a native
+registry snapshot store. The next recommended work is concurrency utilities for bounded parallel
+catalog refresh and validation jobs.
 
 This order is intentional:
 
@@ -186,6 +192,13 @@ Phase 2 candidates:
 - Migration support
 - Query helpers for catalog freshness reports
 - Optional reporting commands
+
+Current status:
+
+- A lightweight native persistence slice now exists for registry snapshots through the `store`
+  command group and matching Lisp API.
+- This does not replace the broader database-backed roadmap. It reduces risk by establishing local
+  persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 
 ### P2: Concurrency Utilities
 
