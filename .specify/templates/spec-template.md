@@ -100,13 +100,15 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
-### External Ecosystem Dependencies *(include if feature wraps upstream libraries)*
+### External Ecosystem Dependencies *(include only if a written interop exception is required)*
 
-- **Upstream Library**: [Name, purpose, and why it is being exposed to Common Lisp users]
+- **Native Common Lisp Alternatives Reviewed**: [Libraries, tools, or direct implementation approaches that were considered first]
+- **Why Native CL Was Not Chosen**: [Specific gap or constraint that justifies the exception]
+- **Upstream Library**: [Name, purpose, and why this exception is still necessary]
 - **License Compatibility**: [Compatible license and any attribution obligations]
 - **Maintenance Signal**: [Release cadence, project activity, or rationale for considering it stable]
 - **Interop Boundary**: [CLI/process protocol, FFI, embedded runtime, or other explicit boundary]
-- **Compatibility Target**: [Supported Common Lisp runtime(s) and Python version range]
+- **Compatibility Target**: [Supported Common Lisp runtime(s) and any external runtime version range]
 
 ### Ecosystem Catalog Inputs *(include if feature curates library knowledge)*
 

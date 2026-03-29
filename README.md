@@ -1,7 +1,7 @@
 # cl-py
 
-cl-py is a Common Lisp-first project for exposing high-quality Python open source libraries to
-Common Lisp users through explicit, reproducible adapter boundaries.
+cl-py is a Common Lisp-first project for building reusable Common Lisp capabilities and, only when
+justified, exposing external tooling through explicit, reproducible adapter boundaries.
 
 ## Current Status
 
@@ -14,8 +14,9 @@ This repository currently contains:
 - Python bootstrap scripts and a minimal CI workflow
 - An initial curated Common Lisp ecosystem catalog backed by live public web sources
 
-The current goal is not to hide Python. The goal is to make Python dependencies consumable from a
-stable Common Lisp surface.
+The current goal is not to hide Python. The goal is to keep the user-facing surface owned by
+Common Lisp and use external dependencies only where a narrow compatibility boundary is genuinely
+needed.
 
 ## Repository Layout
 
@@ -88,6 +89,7 @@ sh scripts/bootstrap-python.sh
 - [Quickstart](docs/quickstart.md)
 - [Development Guide](docs/development.md)
 - [Ecosystem Catalog](docs/ecosystem-catalog.md)
+- [Native Capability Roadmap](docs/adapter-roadmap.md)
 
 ## Development CLI
 
@@ -197,7 +199,7 @@ push and pull request events.
 
 ## Next Steps
 
-- Add more adapters for selected Python libraries
+- Implement the next native Common Lisp capabilities from [docs/adapter-roadmap.md](docs/adapter-roadmap.md)
 - Expand the Common Lisp ecosystem catalog with more categories and refresh passes
 - Expand CI to exercise richer adapter compatibility contracts
 - Add manifest validation and richer adapter contract tests

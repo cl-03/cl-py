@@ -24,8 +24,8 @@
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 **Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
 **Target CL Runtime**: [e.g., SBCL 2.4+, multi-implementation, or NEEDS CLARIFICATION]  
-**Python Compatibility**: [e.g., Python 3.11-3.13, optional upstream extras, or NEEDS CLARIFICATION]  
-**Interop Strategy**: [e.g., subprocess JSON bridge, FFI, RPC, or NEEDS CLARIFICATION]  
+**Native CL Strategy**: [e.g., pure ANSI CL, SBCL-first optimized path, multi-implementation portability layer, or NEEDS CLARIFICATION]  
+**External Interop Exception**: [e.g., none, subprocess JSON bridge with written justification, or NEEDS CLARIFICATION]  
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
@@ -37,10 +37,11 @@
 [Gates determined based on constitution file]
 
 - Common Lisp owns all product-facing logic and public APIs.
-- Python integration boundary is explicit, documented, and justified.
-- Upstream package quality and license compatibility are recorded.
+- Native Common Lisp implementation has been preferred unless an explicit exception is justified.
+- Any external interop boundary is explicit, documented, replaceable, and justified.
+- Native Common Lisp alternatives and upstream quality/licensing review are recorded.
 - Reproducible environment and compatibility tests are part of the plan.
-- Scope is a small, composable delivery rather than an undifferentiated bulk import.
+- Scope is a small, composable native delivery rather than an undifferentiated bulk import.
 - Network-backed ecosystem catalog work defines public sources, output schema, and refresh dates.
 
 ## Project Structure

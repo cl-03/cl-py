@@ -1,9 +1,12 @@
 (in-package #:cl-py.internal)
 
+(defvar *adapter-registry*)
+
 (defun %repo-root ()
-  (uiop:pathname-parent-directory-pathname
-   (uiop:pathname-parent-directory-pathname
-    (or *load-truename* *compile-file-truename*))))
+  (or (ignore-errors (asdf:system-source-directory "cl-py"))
+      (uiop:pathname-parent-directory-pathname
+       (uiop:pathname-parent-directory-pathname
+        (or *load-truename* *compile-file-truename*)))))
 
 (defun %manifest-directory ()
   (merge-pathnames "adapters/manifests/" (%repo-root)))
@@ -35,6 +38,7 @@
    :summary (%manifest-value manifest :summary path)))
 
 (defun load-adapter-manifests ()
+  (setf *adapter-registry* nil)
   (dolist (path (%manifest-files))
     (register-adapter (manifest->adapter (%read-manifest-file path) path)))
   *adapter-registry*)

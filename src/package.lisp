@@ -20,7 +20,7 @@
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
      #:slugify-text
-  #:validate-jsonschema-instance
+    #:validate-jsonschema-instance
    #:main))
 
 (defpackage #:cl-py.internal

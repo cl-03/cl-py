@@ -24,6 +24,8 @@
   adapter)
 
 (defun find-adapter-or-die (adapter-id)
+  (when (null *adapter-registry*)
+    (load-adapter-manifests))
   (or (find adapter-id *adapter-registry* :key #'adapter-id :test #'string=)
       (error 'cl-py:adapter-not-found
              :message "Adapter was not found"
@@ -31,7 +33,36 @@
 
 (in-package #:cl-py)
 
+(defun adapter-id (adapter)
+  (cl-py.internal:adapter-id adapter))
+
+(defun adapter-manifest-version (adapter)
+  (cl-py.internal:adapter-manifest-version adapter))
+
+(defun adapter-name (adapter)
+  (cl-py.internal:adapter-name adapter))
+
+(defun adapter-upstream-url (adapter)
+  (cl-py.internal:adapter-upstream-url adapter))
+
+(defun adapter-license (adapter)
+  (cl-py.internal:adapter-license adapter))
+
+(defun adapter-python-module (adapter)
+  (cl-py.internal:adapter-python-module adapter))
+
+(defun adapter-python-distribution (adapter)
+  (cl-py.internal:adapter-python-distribution adapter))
+
+(defun adapter-python-requirement (adapter)
+  (cl-py.internal:adapter-python-requirement adapter))
+
+(defun adapter-capabilities (adapter)
+  (cl-py.internal:adapter-capabilities adapter))
+
 (defun list-adapters ()
+  (when (null cl-py.internal:*adapter-registry*)
+    (cl-py.internal:load-adapter-manifests))
   cl-py.internal:*adapter-registry*)
 
 (defun find-adapter (adapter-id)
@@ -60,4 +91,4 @@
                          distribution))))
     (first lines)))
 
-  (cl-py.internal:load-adapter-manifests)
+(cl-py.internal:load-adapter-manifests)
