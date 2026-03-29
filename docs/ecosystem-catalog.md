@@ -38,6 +38,13 @@ Each entry includes:
 | Mito | ORM and migrations | https://github.com/fukamachi/mito | ORM with migrations, relationship helpers, and support for PostgreSQL, MySQL, and SQLite. | last month | 2026-03-29 | awesome-cl, GitHub repo page, Quickdocs |
 | FiveAM | Testing | https://github.com/lispci/fiveam | Regression testing framework widely used for Common Lisp unit and integration tests. | Release 1.4.3 on 2024-05-30; latest observed repo commit 2 years ago | 2026-03-29 | awesome-cl, GitHub repo page |
 | Clingon | CLI | https://github.com/dnaeon/clingon | Rich command-line options parser with subcommands, generated help, and shell completion support. | last month | 2026-03-29 | awesome-cl, GitHub repo page |
+| Jzon | JSON | https://github.com/Zulu-Inuoe/jzon | Correct and safety-oriented JSON reader and writer with strong RFC 8259 compliance and sane defaults. | last month | 2026-03-29 | awesome-cl, GitHub repo page |
+| Shasht | JSON | https://github.com/yitzchak/shasht | Fast JSON reader and writer designed for strong round-trip behavior and Jupyter-oriented interoperability. | 4 months ago | 2026-03-29 | awesome-cl, GitHub repo page |
+| CL-DBI | Database interface | https://github.com/fukamachi/cl-dbi | Database-independent SQL interface that unifies SQLite, PostgreSQL, and MySQL access behind one API. | last month | 2026-03-29 | awesome-cl, GitHub repo page |
+| SxQL | SQL generation | https://github.com/fukamachi/sxql | Mature SQL DSL and query composer for building immutable, composable SQL statements in Common Lisp. | 3 months ago | 2026-03-29 | awesome-cl, GitHub repo page |
+| local-time | Date and time | https://github.com/dlowe-net/local-time | Widely used date and time manipulation library based on Erik Naggum's time-handling work. | 2 weeks ago | 2026-03-29 | awesome-cl, Quickdocs, GitHub repo page |
+| lparallel | Parallel programming | https://github.com/sharplispers/lparallel | Parallel programming library with futures, promises, queues, and parallel collection operators. | 7 months ago | 2026-03-29 | awesome-cl, GitHub repo page |
+| Sento | Actors and concurrency | https://github.com/mdbergmann/cl-gserver | Actor framework with agents, routers, tasks, futures, FSM support, and recent remoting capabilities. | 5 days ago | 2026-03-29 | awesome-cl, GitHub repo page |
 
 ## Selection Notes
 
@@ -49,8 +56,8 @@ Each entry includes:
 
 ## Next Expansion Targets
 
-- Data formats: Jzon, Shasht, CXML
-- Database and SQL: Postmodern, SxQL, CL-DBI
-- Concurrency: BordeauxThreads, lparallel
-- Date and time: local-time
+- Data formats: CXML, Plump, cl-yaml or active YAML successor
+- Database and SQL: Postmodern, pgloader, cl-migratum
+- Concurrency and distributed systems: BordeauxThreads, Calispel, ChanL
 - Packaging and workflows: Quicklisp, Qlot, CLPM, OCICL
+- Documentation and developer experience: Lem, SLIME, mgl-pax, Staple
