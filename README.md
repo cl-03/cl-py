@@ -12,6 +12,7 @@ This repository currently contains:
 - A development CLI
 - Demonstration adapters for the Python `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema` libraries
 - Python bootstrap scripts and a minimal CI workflow
+- An initial curated Common Lisp ecosystem catalog backed by live public web sources
 
 The current goal is not to hide Python. The goal is to make Python dependencies consumable from a
 stable Common Lisp surface.
@@ -86,6 +87,7 @@ sh scripts/bootstrap-python.sh
 
 - [Quickstart](docs/quickstart.md)
 - [Development Guide](docs/development.md)
+- [Ecosystem Catalog](docs/ecosystem-catalog.md)
 
 ## Development CLI
 
@@ -196,5 +198,6 @@ push and pull request events.
 ## Next Steps
 
 - Add more adapters for selected Python libraries
+- Expand the Common Lisp ecosystem catalog with more categories and refresh passes
 - Expand CI to exercise richer adapter compatibility contracts
 - Add manifest validation and richer adapter contract tests

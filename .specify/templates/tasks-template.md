@@ -70,6 +70,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T009 Setup environment configuration management
 - [ ] T010 Create adapter registry and upstream metadata manifest for supported libraries
 - [ ] T011 [P] Define reproducible Common Lisp and Python environment bootstrap scripts
+- [ ] T012 [P] Define network-source ingestion and catalog schema for ecosystem library metadata
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -85,17 +86,17 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T012 [P] [US1] Contract test for [adapter capability] in tests/contract/test_[name].py
-- [ ] T013 [P] [US1] Integration test for [Common Lisp user journey] in tests/integration/test_[name].py
+- [ ] T013 [P] [US1] Contract test for [adapter capability] in tests/contract/test_[name].py
+- [ ] T014 [P] [US1] Integration test for [Common Lisp user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Create Common Lisp domain model in src/models/[entity1].lisp
-- [ ] T015 [P] [US1] Create adapter contract fixture in tests/fixtures/[library]/
-- [ ] T016 [US1] Implement adapter service in src/services/[service].lisp (depends on T014, T015)
-- [ ] T017 [US1] Implement user-facing Common Lisp API in src/[location]/[file].lisp
-- [ ] T018 [US1] Add validation and dependency failure handling
-- [ ] T019 [US1] Add runnable examples and logging for user story 1 operations
+- [ ] T015 [P] [US1] Create Common Lisp domain model in src/models/[entity1].lisp
+- [ ] T016 [P] [US1] Create adapter contract fixture in tests/fixtures/[library]/
+- [ ] T017 [US1] Implement adapter service in src/services/[service].lisp (depends on T015, T016)
+- [ ] T018 [US1] Implement user-facing Common Lisp API in src/[location]/[file].lisp
+- [ ] T019 [US1] Add validation and dependency failure handling
+- [ ] T020 [US1] Add runnable examples and logging for user story 1 operations
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -109,15 +110,15 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T020 [P] [US2] Contract test for [adapter capability] in tests/contract/test_[name].py
-- [ ] T021 [P] [US2] Integration test for [Common Lisp user journey] in tests/integration/test_[name].py
+- [ ] T021 [P] [US2] Contract test for [adapter capability] in tests/contract/test_[name].py
+- [ ] T022 [P] [US2] Integration test for [Common Lisp user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 2
 
-- [ ] T022 [P] [US2] Create Common Lisp domain model in src/models/[entity].lisp
-- [ ] T023 [US2] Implement adapter service in src/services/[service].lisp
-- [ ] T024 [US2] Implement user-facing Common Lisp API in src/[location]/[file].lisp
-- [ ] T025 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T023 [P] [US2] Create Common Lisp domain model in src/models/[entity].lisp
+- [ ] T024 [US2] Implement adapter service in src/services/[service].lisp
+- [ ] T025 [US2] Implement user-facing Common Lisp API in src/[location]/[file].lisp
+- [ ] T026 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -131,14 +132,14 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T026 [P] [US3] Contract test for [adapter capability] in tests/contract/test_[name].py
-- [ ] T027 [P] [US3] Integration test for [Common Lisp user journey] in tests/integration/test_[name].py
+- [ ] T027 [P] [US3] Contract test for [adapter capability] in tests/contract/test_[name].py
+- [ ] T028 [P] [US3] Integration test for [Common Lisp user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 3
 
-- [ ] T028 [P] [US3] Create Common Lisp domain model in src/models/[entity].lisp
-- [ ] T029 [US3] Implement adapter service in src/services/[service].lisp
-- [ ] T030 [US3] Implement user-facing Common Lisp API in src/[location]/[file].lisp
+- [ ] T029 [P] [US3] Create Common Lisp domain model in src/models/[entity].lisp
+- [ ] T030 [US3] Implement adapter service in src/services/[service].lisp
+- [ ] T031 [US3] Implement user-facing Common Lisp API in src/[location]/[file].lisp
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -154,6 +155,7 @@ Examples of foundational tasks (adjust based on your project):
 
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Verify upstream license notices and attribution files
+- [ ] TXXX Refresh ecosystem catalog entries with observed update dates and source links
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/

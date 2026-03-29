@@ -1,18 +1,12 @@
 <!--
 Sync Impact Report
-Version change: template -> 1.0.0
+Version change: 1.0.0 -> 1.1.0
 Modified principles:
-- Placeholder Principle 1 -> I. Common Lisp Core
-- Placeholder Principle 2 -> II. Explicit Python Adapter Boundary
-- Placeholder Principle 3 -> III. Curated Open Source Intake
-- Placeholder Principle 4 -> IV. Reproducible Compatibility Gates
-- Placeholder Principle 5 -> V. Small, Composable Deliveries
+- III. Curated Open Source Intake -> III. Curated Open Source Intake and Ecosystem Intelligence
 Added sections:
-- Architecture and Compatibility Constraints
-- Delivery Workflow and Quality Gates
+- Network-backed Common Lisp Ecosystem Catalog requirement in workflow gates
 Removed sections:
-- Placeholder Section 2
-- Placeholder Section 3
+- None
 Templates requiring updates:
 - ✅ .specify/templates/plan-template.md
 - ✅ .specify/templates/spec-template.md
@@ -41,13 +35,16 @@ integration mode SHOULD be process or protocol boundaries that preserve a pure C
 embedding CPython or using implementation-specific FFI requires a written justification in the
 feature plan.
 
-### III. Curated Open Source Intake
+### III. Curated Open Source Intake and Ecosystem Intelligence
 The project exists to make high-quality Python open source libraries available to Common Lisp,
 not to mirror the entire Python ecosystem indiscriminately. A library MAY be added only if it is
 actively maintained or clearly stable, license-compatible with the repository, well documented,
 and meaningfully useful to Common Lisp users. Each adoption decision MUST record the upstream
 project name, purpose, license, maintenance signal, version policy, and the reason it was chosen
-over competing libraries.
+over competing libraries. The repository MUST also maintain a curated Common Lisp ecosystem catalog
+based on live network-sourced information whenever external access is available. Catalog entries
+MUST include, at minimum, library name, canonical access or download link, concise description,
+last observed upstream update date, and the date on which this repository refreshed the entry.
 
 ### IV. Reproducible Compatibility Gates
 Every adapter MUST ship with automated verification that proves the Common Lisp surface works
@@ -84,8 +81,12 @@ When a simpler design can satisfy the current use case, the simpler design wins.
 	library or library class, license expectations, and out-of-scope boundaries.
 - Every implementation plan MUST pass a constitution check covering Common Lisp core ownership,
 	adapter boundary choice, upstream library quality, license compatibility, and reproducibility.
+- Any feature or maintenance task that curates Common Lisp ecosystem knowledge MUST identify the
+	public network sources used, define refresh expectations, and specify the output schema for the
+	catalog entries.
 - Every task list MUST include work for adapter contract definition, environment setup,
-	compatibility testing, and documentation or examples.
+	compatibility testing, and documentation or examples. When ecosystem catalog work is in scope,
+	tasks MUST include source retrieval, normalization, and refresh-date recording.
 - Every merge request MUST show how the feature is exercised from Common Lisp and how dependency
 	failures are surfaced to users.
 - Breaking changes to public Common Lisp interfaces or supported adapter contracts MUST include a
@@ -106,4 +107,4 @@ Reviewers MUST reject changes that violate the Common Lisp core boundary, omit u
 quality evaluation, or skip reproducibility gates without an approved exception recorded in the
 plan. Exceptions MUST be narrow, time-bounded, and tracked to removal.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-29 | **Last Amended**: 2026-03-29
+**Version**: 1.1.0 | **Ratified**: 2026-03-29 | **Last Amended**: 2026-03-29

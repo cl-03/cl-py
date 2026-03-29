@@ -41,6 +41,7 @@
 - Upstream package quality and license compatibility are recorded.
 - Reproducible environment and compatibility tests are part of the plan.
 - Scope is a small, composable delivery rather than an undifferentiated bulk import.
+- Network-backed ecosystem catalog work defines public sources, output schema, and refresh dates.
 
 ## Project Structure
 

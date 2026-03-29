@@ -108,6 +108,12 @@
 - **Interop Boundary**: [CLI/process protocol, FFI, embedded runtime, or other explicit boundary]
 - **Compatibility Target**: [Supported Common Lisp runtime(s) and Python version range]
 
+### Ecosystem Catalog Inputs *(include if feature curates library knowledge)*
+
+- **Network Source(s)**: [Canonical URLs used to gather library metadata]
+- **Catalog Output Schema**: [Fields such as name, link, summary, upstream updated date, refresh date]
+- **Refresh Expectation**: [How freshness is maintained or when data should be re-collected]
+
 ## Success Criteria *(mandatory)*
 
 <!--
