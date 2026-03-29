@@ -10,6 +10,7 @@
                (:file "src/process")
                (:file "src/json")
                (:file "src/time")
+               (:file "src/uri-http")
                (:file "src/manifest")
                (:file "src/registry")
                (:file "src/adapter")

@@ -38,6 +38,10 @@
            (dispatch-json-command (rest args)))
           ((string= (first args) "time")
            (dispatch-time-command (rest args)))
+          ((string= (first args) "uri")
+           (dispatch-uri-command (rest args)))
+          ((string= (first args) "http")
+           (dispatch-http-command (rest args)))
           ((find-adapter (first args))
            (cl-py.internal:dispatch-adapter-command (first args) (rest args)))
           (t

@@ -22,6 +22,9 @@
    #:normalize-json
    #:parse-iso-timestamp
    #:format-iso-timestamp
+   #:normalize-uri
+   #:fetch-text
+   #:fetch-json
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
      #:slugify-text

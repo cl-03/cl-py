@@ -1,12 +1,19 @@
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+        (require :sb-bsd-sockets))
+
 (defpackage #:cl-py-tests
   (:use #:cl)
   (:import-from #:cl-py
                 #:adapter-id
                 #:adapter-metadata
                 #:emit-json
+                #:fetch-json
+                #:fetch-text
                 #:find-adapter
                 #:format-iso-timestamp
                 #:list-adapters
+                #:normalize-uri
                 #:normalize-json
                 #:normalize-packaging-version
                 #:parse-json
@@ -170,6 +177,91 @@
                 (cl-py:adapter-error ()
                         (%check t "native time parser rejects invalid dates"))))
 
+(defun %native-uri-normalize-test ()
+        (%check (string=
+                                         "http://example.com/path?q=1#frag"
+                                         (normalize-uri "HTTP://Example.COM:80/path?q=1#frag"))
+                                        "native uri normalization lowercases host and removes default port")
+        (%check (string=
+                                         "http://example.com:8080/"
+                                         (normalize-uri "http://Example.com:8080"))
+                                        "native uri normalization preserves non-default port and default path"))
+
+#+sbcl
+(defun %with-local-http-response (body thunk &key (content-type "text/plain"))
+  (let ((listener (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp))
+        (server-thread nil))
+    (unwind-protect
+        (progn
+          (sb-bsd-sockets:socket-bind listener #(127 0 0 1) 0)
+          (sb-bsd-sockets:socket-listen listener 1)
+          (multiple-value-bind (address port)
+              (sb-bsd-sockets:socket-name listener)
+            (declare (ignore address))
+            (setf server-thread
+                  (sb-thread:make-thread
+                   (lambda ()
+                     (let ((client-socket nil)
+                           (stream nil))
+                       (unwind-protect
+                           (progn
+                             (setf client-socket (sb-bsd-sockets:socket-accept listener))
+                             (setf stream (sb-bsd-sockets:socket-make-stream client-socket
+                                                                             :input t
+                                                                             :output t
+                                                                             :element-type 'character
+                                                                             :external-format :utf-8
+                                                                             :auto-close t))
+                             (loop for line = (read-line stream nil nil)
+                                   while line
+                                             until (string= (string-right-trim '(#\Return) line) ""))
+                             (write-string
+                              (let ((crlf (format nil "~C~C" #\Return #\Newline)))
+                                (format nil
+                                        "HTTP/1.1 200 OK~AContent-Type: ~A~AContent-Length: ~D~AConnection: close~A~A~A"
+                                        crlf
+                                        content-type
+                                        crlf
+                                        (length body)
+                                        crlf
+                                        crlf
+                                        crlf
+                                        body))
+                              stream)
+                             (finish-output stream))
+                         (when stream
+                           (ignore-errors (close stream)))
+                         (when client-socket
+                           (ignore-errors (sb-bsd-sockets:socket-close client-socket))))))))
+            (prog1
+                (funcall thunk (format nil "http://127.0.0.1:~D/test" port))
+              (when server-thread
+                (sb-thread:join-thread server-thread)))))
+      (ignore-errors (sb-bsd-sockets:socket-close listener)))))
+
+#-sbcl
+(defun %with-local-http-response (body thunk &key (content-type "text/plain"))
+        (declare (ignore body thunk content-type))
+        (format t "SKIP native HTTP tests require SBCL sockets~%"))
+
+(defun %native-http-fetch-text-test ()
+        (%with-local-http-response
+         "hello from cl-py"
+         (lambda (uri)
+                 (%check (string= "hello from cl-py" (fetch-text uri))
+                                                 "native http fetch-text reads loopback response body"))))
+
+(defun %native-http-fetch-json-test ()
+        (%with-local-http-response
+         "{\"service\":\"cl-py\",\"active\":true}"
+         (lambda (uri)
+                 (let ((value (fetch-json uri)))
+                         (%check (and (consp value) (eq :object (first value)))
+                                                         "native http fetch-json parses json response bodies")
+                         (%check (string= "cl-py" (cdr (assoc "service" (cdr value) :test #'string=)))
+                                                         "native http fetch-json preserves object fields")))
+         :content-type "application/json"))
+
 (defun %optional-packaging-integration-test ()
   (handler-case
       (%check (string= "1.0rc1" (normalize-packaging-version "1.0rc1"))
@@ -221,6 +313,9 @@
   (%native-time-parse-test)
   (%native-time-offset-test)
   (%native-time-invalid-test)
+        (%native-uri-normalize-test)
+        (%native-http-fetch-text-test)
+        (%native-http-fetch-json-test)
   (%optional-packaging-integration-test)
   (%optional-dateutil-integration-test)
   (%optional-slugify-integration-test)

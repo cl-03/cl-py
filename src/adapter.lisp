@@ -48,6 +48,8 @@
   (format t "  registry~%")
   (cl-py::%print-json-usage)
   (cl-py::%print-time-usage)
+  (cl-py::%print-uri-usage)
+  (cl-py::%print-http-usage)
   (dolist (adapter cl-py.internal:*adapter-registry*)
     (%print-adapter-command-usage adapter)))
 

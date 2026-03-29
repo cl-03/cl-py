@@ -46,6 +46,9 @@ sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :t
 sbcl --script scripts/dev-cli.lisp json normalize '{"b":2,"a":1}'
 sbcl --script scripts/dev-cli.lisp time parse-iso 2026-03-29T10:20:30Z
 sbcl --script scripts/dev-cli.lisp time format-iso '(:timestamp :year 2026 :month 3 :day 29 :hour 10 :minute 20 :second 30 :offset-minutes 0)'
+sbcl --script scripts/dev-cli.lisp uri normalize HTTP://Example.COM:80/path?q=1
+sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
+sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -69,6 +72,8 @@ Set-Content tmp-time.txt '2026-03-29T10:20:30+05:30'
 sbcl --script scripts/dev-cli.lisp time parse-iso @tmp-time.txt
 ```
 
+The same `@file` and `-` input rules also apply to URI and HTTP commands.
+
 ## 3. Load with ASDF from the Repository Root
 
 Start SBCL in the repository root and load the system:
@@ -86,6 +91,9 @@ Then call exported functions directly:
 (cl-py:normalize-json "{\"b\":2,\"a\":1}")
 (cl-py:parse-iso-timestamp "2026-03-29T10:20:30Z")
 (cl-py:format-iso-timestamp '(:timestamp :year 2026 :month 3 :day 29 :hour 10 :minute 20 :second 30 :offset-minutes 0))
+(cl-py:normalize-uri "HTTP://Example.COM:80/path?q=1")
+(cl-py:fetch-text "http://127.0.0.1:8080/")
+(cl-py:fetch-json "http://127.0.0.1:8080/data")
 (cl-py:list-adapters)
 (cl-py:adapter-metadata "packaging")
 (cl-py:normalize-packaging-version "1.0rc1")
@@ -135,6 +143,7 @@ At load time, `cl-py`:
 - Loads the core Common Lisp system
 - Loads native JSON helpers for stable internal data handling
 - Loads native time normalization helpers for timestamp parsing and formatting
+- Loads native URI/HTTP helpers for normalization and loopback-safe fetch workflows
 - Reads adapter manifests from `adapters/manifests/`
 - Registers adapters in memory
 - Exposes adapter metadata and user-facing functions through the `cl-py` package
