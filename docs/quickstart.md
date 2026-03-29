@@ -57,9 +57,9 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
-sbcl --script scripts/dev-cli.lisp store delete-registry nightly
+sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run
-sbcl --script scripts/dev-cli.lisp store prune-registry 5
+sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run
 sbcl --script scripts/dev-cli.lisp store latest-registry
 sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
@@ -134,7 +134,8 @@ aggregate report diffs, exclusion filters, group-selected output, row limits, of
 absolute-delta sorting, per-group sort overrides, per-group paging overrides, file export,
 per-result pagination metadata such as total, returned, and remaining row counts, plus lifecycle
 operations for deleting snapshots and pruning older snapshots while keeping the newest N entries.
-Use `--dry-run` on delete/prune commands to preview changes without modifying the store.
+Use `--dry-run` on delete/prune commands to preview changes without modifying the store, and
+use `--force` to execute the actual destructive operation.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

@@ -214,8 +214,8 @@ Current capabilities:
 - Save the current adapter registry as a canonical JSON snapshot
 - List saved registry snapshots from local storage
 - Load a snapshot back into the native JSON data model
-- Delete a saved registry snapshot by id
-- Prune older registry snapshots while keeping the newest N ids
+- Delete a saved registry snapshot by id with explicit force confirmation
+- Prune older registry snapshots while keeping the newest N ids with explicit force confirmation
 - Preview delete and prune lifecycle operations with dry-run mode before changing disk state
 - Query the latest, summarized, and diffed view of stored snapshots
 - Query per-adapter history across stored snapshots

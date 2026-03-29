@@ -88,22 +88,27 @@
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
     (parse-json (uiop:read-file-string path))))
 
-(defun delete-registry-snapshot (snapshot-id &key directory dry-run)
+(defun delete-registry-snapshot (snapshot-id &key directory dry-run force)
   (let ((path (%registry-snapshot-path snapshot-id directory)))
     (unless (probe-file path)
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
+    (unless (or dry-run force)
+      (%store-error "Deleting a registry snapshot requires :force t or :dry-run t"))
     (unless dry-run
       (delete-file path))
     (list :object
           (cons "deleted" (if dry-run :false :true))
           (cons "dry-run" (if dry-run :true :false))
+          (cons "forced" (if (and force (not dry-run)) :true :false))
           (cons "would-delete" (if dry-run :true :false))
           (cons "snapshot-id" snapshot-id)
           (cons "path" (namestring path)))))
 
-(defun prune-registry-snapshots (keep-count &key directory dry-run)
+(defun prune-registry-snapshots (keep-count &key directory dry-run force)
   (unless (and (integerp keep-count) (>= keep-count 0))
     (%store-error "Keep count must be a non-negative integer"))
+  (unless (or dry-run force)
+    (%store-error "Pruning registry snapshots requires :force t or :dry-run t"))
   (let* ((snapshot-ids (list-registry-snapshots :directory directory))
          (kept-snapshot-ids (subseq snapshot-ids 0 (min keep-count (length snapshot-ids))))
          (deleted-snapshot-ids (nthcdr (length kept-snapshot-ids) snapshot-ids)))
@@ -112,6 +117,7 @@
         (delete-file (%registry-snapshot-path snapshot-id directory))))
     (list :object
           (cons "dry-run" (if dry-run :true :false))
+          (cons "forced" (if (and force (not dry-run)) :true :false))
           (cons "keep-count" keep-count)
           (cons "kept-count" (length kept-snapshot-ids))
           (cons "deleted-count" (length deleted-snapshot-ids))
@@ -311,43 +317,65 @@
 
 (defun %parse-store-delete-registry-args (args)
   (let ((snapshot-id nil)
-        (dry-run nil))
+        (dry-run nil)
+        (force nil))
     (loop while args
           for argument = (pop args)
           do (cond
                ((string= argument "--dry-run")
                 (setf dry-run t))
+               ((string= argument "--force")
+                (setf force t))
                ((null snapshot-id)
                 (setf snapshot-id argument))
                (t
                 (cl-py.internal:signal-cli-usage-error
-                 "store delete-registry requires exactly one snapshot id and optional --dry-run"
+                 "store delete-registry requires exactly one snapshot id and one of --dry-run or --force"
                  #'%print-store-usage))))
     (unless snapshot-id
       (cl-py.internal:signal-cli-usage-error
        "store delete-registry requires a snapshot id"
        #'%print-store-usage))
-    (values snapshot-id dry-run)))
+    (when (and dry-run force)
+      (cl-py.internal:signal-cli-usage-error
+       "store delete-registry accepts either --dry-run or --force, not both"
+       #'%print-store-usage))
+    (unless (or dry-run force)
+      (cl-py.internal:signal-cli-usage-error
+       "store delete-registry requires --dry-run or --force"
+       #'%print-store-usage))
+    (values snapshot-id dry-run force)))
 
 (defun %parse-store-prune-registry-args (args)
   (let ((keep-count nil)
-        (dry-run nil))
+        (dry-run nil)
+        (force nil))
     (loop while args
           for argument = (pop args)
           do (cond
                ((string= argument "--dry-run")
                 (setf dry-run t))
+               ((string= argument "--force")
+                (setf force t))
                ((null keep-count)
                 (setf keep-count (%parse-keep-count argument "store prune-registry")))
                (t
                 (cl-py.internal:signal-cli-usage-error
-                 "store prune-registry requires exactly one keep count and optional --dry-run"
+                 "store prune-registry requires exactly one keep count and one of --dry-run or --force"
                  #'%print-store-usage))))
     (unless keep-count
       (cl-py.internal:signal-cli-usage-error
        "store prune-registry requires a keep count"
        #'%print-store-usage))
-    (values keep-count dry-run)))
+    (when (and dry-run force)
+      (cl-py.internal:signal-cli-usage-error
+       "store prune-registry accepts either --dry-run or --force, not both"
+       #'%print-store-usage))
+    (unless (or dry-run force)
+      (cl-py.internal:signal-cli-usage-error
+       "store prune-registry requires --dry-run or --force"
+       #'%print-store-usage))
+    (values keep-count dry-run force)))
 
 (defun %limit-rows (rows limit)
   (if limit
@@ -930,8 +958,8 @@
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
-  (format t "  store delete-registry <snapshot-id> [--dry-run]~%")
-  (format t "  store prune-registry <keep-count> [--dry-run]~%")
+  (format t "  store delete-registry <snapshot-id> (--dry-run | --force)~%")
+  (format t "  store prune-registry <keep-count> (--dry-run | --force)~%")
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
   (format t "  store summarize-registry <snapshot-id>~%")
@@ -949,9 +977,9 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store list-registry~%")
-  (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run~%")
-  (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store show-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store latest-registry~%")
@@ -995,14 +1023,14 @@
     (format t "~A~%" snapshot-id)))
 
 (defun %store-cli-delete-registry (args)
-  (multiple-value-bind (snapshot-id dry-run)
+  (multiple-value-bind (snapshot-id dry-run force)
       (%parse-store-delete-registry-args args)
-    (format t "~A~%" (emit-json (delete-registry-snapshot snapshot-id :dry-run dry-run)))))
+    (format t "~A~%" (emit-json (delete-registry-snapshot snapshot-id :dry-run dry-run :force force)))))
 
 (defun %store-cli-prune-registry (args)
-  (multiple-value-bind (keep-count dry-run)
+  (multiple-value-bind (keep-count dry-run force)
       (%parse-store-prune-registry-args args)
-    (format t "~A~%" (emit-json (prune-registry-snapshots keep-count :dry-run dry-run)))))
+    (format t "~A~%" (emit-json (prune-registry-snapshots keep-count :dry-run dry-run :force force)))))
 
 (defun %store-cli-show-registry (snapshot-id)
   (format t "~A~%" (emit-json (load-registry-snapshot snapshot-id))))
