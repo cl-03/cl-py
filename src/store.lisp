@@ -114,6 +114,379 @@
         :key #'%snapshot-adapter-id
         :test #'string=))
 
+(defun %adapter-entry (adapter key)
+  (cdr (assoc key (cdr adapter) :test #'string=)))
+
+(defun %adapter-has-capability-p (adapter capability)
+  (find capability (%adapter-entry adapter "capabilities") :test #'string=))
+
+(defun %normalize-filter-values (values)
+  (sort (remove-duplicates (remove nil (copy-list values)) :test #'string=)
+        #'string<))
+
+(defun %effective-filter-values (single multiple)
+  (%normalize-filter-values
+   (append (when single (list single))
+           (copy-list multiple))))
+
+(defun %single-or-null (values)
+  (if (= (length values) 1)
+      (first values)
+      :null))
+
+(defun %report-entry-name (entry)
+  (%snapshot-entry entry "name"))
+
+(defun %report-entry-count (entry)
+  (%snapshot-entry entry "count"))
+
+(defun %report-diff-entry-delta (entry)
+  (%snapshot-entry entry "delta"))
+
+(defun %report-diff-entry-abs-delta (entry)
+  (abs (%report-diff-entry-delta entry)))
+
+(defun %report-matches-filters-p (adapter licenses capabilities excluded-licenses excluded-capabilities)
+  (and (or (null licenses)
+           (member (%adapter-entry adapter "license") licenses :test #'string=))
+       (or (null capabilities)
+           (loop for capability in capabilities
+                 thereis (%adapter-has-capability-p adapter capability)))
+       (not (member (%adapter-entry adapter "license") excluded-licenses :test #'string=))
+       (not (loop for capability in excluded-capabilities
+                  thereis (%adapter-has-capability-p adapter capability)))))
+
+(defun %count-values (values)
+  (let ((table (make-hash-table :test #'equal)))
+    (dolist (value values)
+      (when value
+        (incf (gethash value table 0))))
+    (loop for key being the hash-keys of table
+          collect (list :object
+                        (cons "name" key)
+                        (cons "count" (gethash key table))))))
+
+(defun %report-filter-object (licenses capabilities excluded-licenses excluded-capabilities)
+  (list :object
+  (cons "license" (%single-or-null licenses))
+        (cons "licenses" (coerce licenses 'vector))
+  (cons "capability" (%single-or-null capabilities))
+  (cons "capabilities" (coerce capabilities 'vector))
+  (cons "exclude-license" (%single-or-null excluded-licenses))
+  (cons "exclude-licenses" (coerce excluded-licenses 'vector))
+  (cons "exclude-capability" (%single-or-null excluded-capabilities))
+  (cons "exclude-capabilities" (coerce excluded-capabilities 'vector))))
+
+(defun %sort-report-rows (rows sort-mode)
+  (sort (copy-list rows)
+        (cond
+          ((string= sort-mode "count-asc")
+           (lambda (left right)
+             (or (< (%report-entry-count left) (%report-entry-count right))
+                 (and (= (%report-entry-count left) (%report-entry-count right))
+                      (string< (%report-entry-name left) (%report-entry-name right))))))
+          ((string= sort-mode "count-desc")
+           (lambda (left right)
+             (or (> (%report-entry-count left) (%report-entry-count right))
+                 (and (= (%report-entry-count left) (%report-entry-count right))
+                      (string< (%report-entry-name left) (%report-entry-name right))))))
+          (t
+           (lambda (left right)
+             (string< (%report-entry-name left) (%report-entry-name right)))))))
+
+(defun %sort-diff-report-rows (rows sort-mode)
+  (sort (copy-list rows)
+        (cond
+          ((string= sort-mode "delta-asc")
+           (lambda (left right)
+             (or (< (%report-diff-entry-delta left) (%report-diff-entry-delta right))
+                 (and (= (%report-diff-entry-delta left) (%report-diff-entry-delta right))
+                      (string< (%report-entry-name left) (%report-entry-name right))))))
+          ((string= sort-mode "delta-desc")
+           (lambda (left right)
+             (or (> (%report-diff-entry-delta left) (%report-diff-entry-delta right))
+                 (and (= (%report-diff-entry-delta left) (%report-diff-entry-delta right))
+                      (string< (%report-entry-name left) (%report-entry-name right))))))
+          ((string= sort-mode "abs-delta-asc")
+           (lambda (left right)
+             (or (< (%report-diff-entry-abs-delta left) (%report-diff-entry-abs-delta right))
+                 (and (= (%report-diff-entry-abs-delta left) (%report-diff-entry-abs-delta right))
+                      (string< (%report-entry-name left) (%report-entry-name right))))))
+          ((string= sort-mode "abs-delta-desc")
+           (lambda (left right)
+             (or (> (%report-diff-entry-abs-delta left) (%report-diff-entry-abs-delta right))
+                 (and (= (%report-diff-entry-abs-delta left) (%report-diff-entry-abs-delta right))
+                      (string< (%report-entry-name left) (%report-entry-name right))))))
+          (t
+           (lambda (left right)
+             (string< (%report-entry-name left) (%report-entry-name right)))))))
+
+(defun %validate-report-sort-mode (sort-mode command-name)
+  (unless (member sort-mode '("name" "count-asc" "count-desc") :test #'string=)
+    (cl-py.internal:signal-cli-usage-error
+     (format nil "~A requires --sort to be one of: name, count-asc, count-desc" command-name)
+     #'%print-store-usage))
+  sort-mode)
+
+(defun %validate-diff-report-sort-mode (sort-mode)
+  (unless (member sort-mode '("name" "delta-asc" "delta-desc" "abs-delta-asc" "abs-delta-desc") :test #'string=)
+    (cl-py.internal:signal-cli-usage-error
+     "store diff-report-registry requires --sort to be one of: name, delta-asc, delta-desc, abs-delta-asc, abs-delta-desc"
+     #'%print-store-usage))
+  sort-mode)
+
+(defun %validate-report-limit (limit command-name)
+  (unless (and (integerp limit) (>= limit 0))
+    (cl-py.internal:signal-cli-usage-error
+     (format nil "~A requires --limit to be a non-negative integer" command-name)
+     #'%print-store-usage))
+  limit)
+
+(defun %parse-non-negative-integer (text command-name)
+  (let ((value (ignore-errors (parse-integer text :junk-allowed nil))))
+    (%validate-report-limit value command-name)))
+
+(defun %limit-rows (rows limit)
+  (if limit
+      (subseq rows 0 (min limit (length rows)))
+      rows))
+
+(defun %offset-rows (rows offset)
+  (if offset
+      (subseq rows (min offset (length rows)))
+      rows))
+
+(defun %pagination-object (rows offset limit paged-rows)
+  (let* ((total-count (length rows))
+         (returned-count (length paged-rows))
+         (effective-offset (or offset 0))
+         (remaining-count (max 0 (- total-count (+ effective-offset returned-count)))))
+    (list :object
+          (cons "total-count" total-count)
+          (cons "returned-count" returned-count)
+          (cons "remaining-count" remaining-count)
+          (cons "offset" (or offset :null))
+          (cons "limit" (or limit :null)))))
+
+(defun %paginate-rows (rows offset limit)
+  (let* ((offset-rows (%offset-rows rows offset))
+         (paged-rows (%limit-rows offset-rows limit)))
+    (values paged-rows (%pagination-object rows offset limit paged-rows))))
+
+(defun %write-output-file (output-path payload)
+  (let ((path (pathname output-path)))
+    (ensure-directories-exist path)
+    (with-open-file (stream path
+                            :direction :output
+                            :if-exists :supersede
+                            :if-does-not-exist :create)
+      (write-string payload stream)
+      (terpri stream))
+    path))
+
+(defun %emit-cli-json-output (value &key output-path)
+  (let ((payload (emit-json value)))
+    (if output-path
+        (format t "~A~%" (namestring (%write-output-file output-path payload)))
+        (format t "~A~%" payload))))
+
+(defun %counts-vector-table (entries)
+  (let ((table (make-hash-table :test #'equal)))
+    (loop for entry across entries
+          do (setf (gethash (%snapshot-entry entry "name") table)
+                   (%snapshot-entry entry "count")))
+    table))
+
+(defun %diff-count-vectors (left right)
+  (let* ((left-table (%counts-vector-table left))
+         (right-table (%counts-vector-table right))
+         (names (sort (remove-duplicates
+                       (append (loop for key being the hash-keys of left-table collect key)
+                               (loop for key being the hash-keys of right-table collect key))
+                       :test #'string=)
+                      #'string<)))
+    (coerce
+     (loop for name in names
+           for left-count = (gethash name left-table 0)
+           for right-count = (gethash name right-table 0)
+           unless (= left-count right-count)
+           collect (list :object
+                         (cons "name" name)
+                         (cons "left-count" left-count)
+                         (cons "right-count" right-count)
+                         (cons "delta" (- right-count left-count))))
+     'vector)))
+
+(defun %parse-report-registry-args (args)
+  (let ((snapshot-id nil)
+        (licenses nil)
+    (capabilities nil)
+    (excluded-licenses nil)
+    (excluded-capabilities nil)
+    (sort-mode "name")
+  (limit nil)
+  (offset nil)
+  (output-path nil))
+    (loop while args
+          for argument = (pop args)
+          do (cond
+               ((string= argument "--license")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --license"
+                   #'%print-store-usage))
+                (push (pop args) licenses))
+               ((string= argument "--capability")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --capability"
+                   #'%print-store-usage))
+                (push (pop args) capabilities))
+               ((string= argument "--exclude-license")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --exclude-license"
+                   #'%print-store-usage))
+                (push (pop args) excluded-licenses))
+               ((string= argument "--exclude-capability")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --exclude-capability"
+                   #'%print-store-usage))
+                (push (pop args) excluded-capabilities))
+               ((string= argument "--sort")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --sort"
+                   #'%print-store-usage))
+                (setf sort-mode (%validate-report-sort-mode (pop args) "store report-registry")))
+               ((string= argument "--limit")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --limit"
+                   #'%print-store-usage))
+                (setf limit (%parse-non-negative-integer (pop args) "store report-registry")))
+               ((string= argument "--offset")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --offset"
+                   #'%print-store-usage))
+                (setf offset (%parse-non-negative-integer (pop args) "store report-registry")))
+               ((string= argument "--output")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --output"
+                   #'%print-store-usage))
+                (setf output-path (pop args)))
+               ((null snapshot-id)
+                (setf snapshot-id argument))
+               (t
+                (cl-py.internal:signal-cli-usage-error
+                 "store report-registry accepts exactly one snapshot id and optional filters"
+                 #'%print-store-usage))))
+    (unless snapshot-id
+      (cl-py.internal:signal-cli-usage-error
+       "store report-registry requires a snapshot id"
+       #'%print-store-usage))
+    (values snapshot-id
+            (%normalize-filter-values (nreverse licenses))
+            (%normalize-filter-values (nreverse capabilities))
+          (%normalize-filter-values (nreverse excluded-licenses))
+          (%normalize-filter-values (nreverse excluded-capabilities))
+          sort-mode
+          limit
+            offset
+            output-path)))
+
+(defun %parse-diff-report-registry-args (args)
+  (let ((left-snapshot-id nil)
+        (right-snapshot-id nil)
+        (licenses nil)
+    (capabilities nil)
+    (excluded-licenses nil)
+    (excluded-capabilities nil)
+    (sort-mode "name")
+  (limit nil)
+  (offset nil)
+  (output-path nil))
+    (loop while args
+          for argument = (pop args)
+          do (cond
+               ((string= argument "--license")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --license"
+                   #'%print-store-usage))
+                (push (pop args) licenses))
+               ((string= argument "--capability")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --capability"
+                   #'%print-store-usage))
+                (push (pop args) capabilities))
+               ((string= argument "--exclude-license")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --exclude-license"
+                   #'%print-store-usage))
+                (push (pop args) excluded-licenses))
+               ((string= argument "--exclude-capability")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --exclude-capability"
+                   #'%print-store-usage))
+                (push (pop args) excluded-capabilities))
+               ((string= argument "--sort")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --sort"
+                   #'%print-store-usage))
+                (setf sort-mode (%validate-diff-report-sort-mode (pop args))))
+               ((string= argument "--limit")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --limit"
+                   #'%print-store-usage))
+                (setf limit (%parse-non-negative-integer (pop args) "store diff-report-registry")))
+               ((string= argument "--offset")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --offset"
+                   #'%print-store-usage))
+                (setf offset (%parse-non-negative-integer (pop args) "store diff-report-registry")))
+               ((string= argument "--output")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --output"
+                   #'%print-store-usage))
+                (setf output-path (pop args)))
+               ((null left-snapshot-id)
+                (setf left-snapshot-id argument))
+               ((null right-snapshot-id)
+                (setf right-snapshot-id argument))
+               (t
+                (cl-py.internal:signal-cli-usage-error
+                 "store diff-report-registry accepts exactly two snapshot ids and optional filters"
+                 #'%print-store-usage))))
+    (unless left-snapshot-id
+      (cl-py.internal:signal-cli-usage-error
+       "store diff-report-registry requires a left snapshot id"
+       #'%print-store-usage))
+    (unless right-snapshot-id
+      (cl-py.internal:signal-cli-usage-error
+       "store diff-report-registry requires a right snapshot id"
+       #'%print-store-usage))
+    (values left-snapshot-id
+            right-snapshot-id
+            (%normalize-filter-values (nreverse licenses))
+            (%normalize-filter-values (nreverse capabilities))
+          (%normalize-filter-values (nreverse excluded-licenses))
+          (%normalize-filter-values (nreverse excluded-capabilities))
+          sort-mode
+          limit
+            offset
+            output-path)))
+
 (defun summarize-registry-snapshot (snapshot-id &key directory)
   (let* ((snapshot (load-registry-snapshot snapshot-id :directory directory))
          (adapters (%snapshot-adapters snapshot))
@@ -125,6 +498,102 @@
           (cons "created-at" (%snapshot-entry snapshot "created-at"))
           (cons "adapter-count" (%snapshot-entry snapshot "adapter-count"))
           (cons "adapter-ids" (coerce adapter-ids 'vector)))))
+
+(defun report-registry-snapshot (snapshot-id &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities (sort "name") limit offset)
+  (let* ((snapshot (load-registry-snapshot snapshot-id :directory directory))
+         (effective-licenses (%effective-filter-values license licenses))
+         (effective-capabilities (%effective-filter-values capability capabilities))
+         (effective-excluded-licenses (%effective-filter-values exclude-license exclude-licenses))
+         (effective-excluded-capabilities (%effective-filter-values exclude-capability exclude-capabilities))
+         (all-adapters (coerce (%snapshot-adapters snapshot) 'list))
+         (adapters (remove-if-not (lambda (adapter)
+                                    (%report-matches-filters-p adapter effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
+                                  all-adapters))
+         (license-counts (%count-values (mapcar (lambda (adapter)
+                                                  (%adapter-entry adapter "license"))
+                                                adapters)))
+         (capability-counts (%count-values
+                             (loop for adapter in adapters
+                                   append (coerce (%adapter-entry adapter "capabilities") 'list)))))
+    (%validate-report-sort-mode sort "report-registry-snapshot")
+    (when limit
+      (%validate-report-limit limit "report-registry-snapshot"))
+    (when offset
+      (%validate-report-limit offset "report-registry-snapshot"))
+    (multiple-value-bind (paged-license-counts license-counts-page)
+        (%paginate-rows (%sort-report-rows license-counts sort) offset limit)
+      (multiple-value-bind (paged-capability-counts capability-counts-page)
+          (%paginate-rows (%sort-report-rows capability-counts sort) offset limit)
+        (list :object
+              (cons "snapshot-id" (%snapshot-entry snapshot "snapshot-id"))
+              (cons "created-at" (%snapshot-created-at snapshot))
+              (cons "adapter-count" (length adapters))
+              (cons "total-adapter-count" (%snapshot-entry snapshot "adapter-count"))
+              (cons "sort" sort)
+              (cons "limit" (or limit :null))
+              (cons "offset" (or offset :null))
+              (cons "filters" (%report-filter-object effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
+              (cons "license-counts-page" license-counts-page)
+              (cons "license-counts" (coerce paged-license-counts 'vector))
+              (cons "capability-counts-page" capability-counts-page)
+              (cons "capability-counts" (coerce paged-capability-counts 'vector)))))))
+
+(defun diff-registry-snapshot-reports (left-snapshot-id right-snapshot-id
+                                       &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities (sort "name") limit offset)
+  (let* ((left-report (report-registry-snapshot left-snapshot-id
+                                                :directory directory
+                                                :license license
+                                                :capability capability
+                                                :licenses licenses
+                                                :capabilities capabilities
+                                                :exclude-license exclude-license
+                                                :exclude-capability exclude-capability
+                                                :exclude-licenses exclude-licenses
+                                                :exclude-capabilities exclude-capabilities))
+         (right-report (report-registry-snapshot right-snapshot-id
+                                                 :directory directory
+                                                 :license license
+                                                 :capability capability
+                                                 :licenses licenses
+                                                 :capabilities capabilities
+                                                 :exclude-license exclude-license
+                                                 :exclude-capability exclude-capability
+                                                 :exclude-licenses exclude-licenses
+                                                 :exclude-capabilities exclude-capabilities))
+         (effective-licenses (%effective-filter-values license licenses))
+         (effective-capabilities (%effective-filter-values capability capabilities))
+         (effective-excluded-licenses (%effective-filter-values exclude-license exclude-licenses))
+         (effective-excluded-capabilities (%effective-filter-values exclude-capability exclude-capabilities))
+         (license-count-diff-rows (coerce (%diff-count-vectors (%snapshot-entry left-report "license-counts")
+                                                                (%snapshot-entry right-report "license-counts"))
+                                          'list))
+         (capability-count-diff-rows (coerce (%diff-count-vectors (%snapshot-entry left-report "capability-counts")
+                                                                   (%snapshot-entry right-report "capability-counts"))
+                                             'list)))
+    (%validate-diff-report-sort-mode sort)
+    (when limit
+      (%validate-report-limit limit "diff-registry-snapshot-reports"))
+    (when offset
+      (%validate-report-limit offset "diff-registry-snapshot-reports"))
+    (multiple-value-bind (paged-license-count-diff license-count-diff-page)
+        (%paginate-rows (%sort-diff-report-rows license-count-diff-rows sort) offset limit)
+      (multiple-value-bind (paged-capability-count-diff capability-count-diff-page)
+          (%paginate-rows (%sort-diff-report-rows capability-count-diff-rows sort) offset limit)
+        (list :object
+              (cons "left-snapshot-id" left-snapshot-id)
+              (cons "right-snapshot-id" right-snapshot-id)
+              (cons "sort" sort)
+              (cons "limit" (or limit :null))
+              (cons "offset" (or offset :null))
+              (cons "filters" (%report-filter-object effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
+              (cons "left-adapter-count" (%snapshot-entry left-report "adapter-count"))
+              (cons "right-adapter-count" (%snapshot-entry right-report "adapter-count"))
+              (cons "left-total-adapter-count" (%snapshot-entry left-report "total-adapter-count"))
+              (cons "right-total-adapter-count" (%snapshot-entry right-report "total-adapter-count"))
+              (cons "license-count-diff-page" license-count-diff-page)
+              (cons "license-count-diff" (coerce paged-license-count-diff 'vector))
+              (cons "capability-count-diff-page" capability-count-diff-page)
+              (cons "capability-count-diff" (coerce paged-capability-count-diff 'vector)))))))
 
 (defun diff-registry-snapshots (left-snapshot-id right-snapshot-id &key directory)
   (let* ((left (load-registry-snapshot left-snapshot-id :directory directory))
@@ -178,8 +647,10 @@
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
   (format t "  store summarize-registry <snapshot-id>~%")
-          (format t "  store diff-registry <left-snapshot-id> <right-snapshot-id>~%")
-          (format t "  store adapter-history <adapter-id>~%"))
+  (format t "  store diff-registry <left-snapshot-id> <right-snapshot-id>~%")
+  (format t "  store adapter-history <adapter-id>~%")
+  (format t "  store report-registry <snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--sort <name|count-asc|count-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%")
+  (format t "  store diff-report-registry <left-snapshot-id> <right-snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--sort <name|delta-asc|delta-desc|abs-delta-asc|abs-delta-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%"))
 
 (defun %print-store-help ()
   (%print-store-usage)
@@ -194,7 +665,25 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store latest-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store summarize-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly~%")
-  (format t "  sbcl --script scripts/dev-cli.lisp store adapter-history slugify~%"))
+  (format t "  sbcl --script scripts/dev-cli.lisp store adapter-history slugify~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text --capability validate-instance~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --exclude-capability metadata~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --offset 1 --limit 2~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --output reports/nightly.json~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --limit 2~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --license python-slugify~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --capability validate-instance~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --exclude-license MIT~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc --offset 1 --limit 1~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --output reports/diff.json~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc --limit 1~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --license MIT --license Apache-2.0~%"))
 
 (defun %store-cli-snapshot-registry (args)
   (if (> (length args) 1)
@@ -224,6 +713,35 @@
 
 (defun %store-cli-adapter-history (adapter-id)
   (format t "~A~%" (emit-json (registry-adapter-history adapter-id))))
+
+(defun %store-cli-report-registry (args)
+  (multiple-value-bind (snapshot-id licenses capabilities excluded-licenses excluded-capabilities sort-mode limit offset output-path)
+      (%parse-report-registry-args args)
+    (%emit-cli-json-output
+     (report-registry-snapshot snapshot-id
+                               :licenses licenses
+                               :capabilities capabilities
+                               :exclude-licenses excluded-licenses
+                               :exclude-capabilities excluded-capabilities
+                               :sort sort-mode
+                               :limit limit
+                               :offset offset)
+     :output-path output-path)))
+
+(defun %store-cli-diff-report-registry (args)
+  (multiple-value-bind (left-snapshot-id right-snapshot-id licenses capabilities excluded-licenses excluded-capabilities sort-mode limit offset output-path)
+      (%parse-diff-report-registry-args args)
+    (%emit-cli-json-output
+     (diff-registry-snapshot-reports left-snapshot-id
+                                     right-snapshot-id
+                                     :licenses licenses
+                                     :capabilities capabilities
+                                     :exclude-licenses excluded-licenses
+                                     :exclude-capabilities excluded-capabilities
+                                     :sort sort-mode
+                                     :limit limit
+                                     :offset offset)
+     :output-path output-path)))
 
 (defun dispatch-store-command (args)
   (cond
@@ -269,6 +787,10 @@
        (cl-py.internal:signal-cli-usage-error
         "store adapter-history requires exactly one adapter id"
         #'%print-store-usage)))
+    ((string= (first args) "report-registry")
+     (%store-cli-report-registry (rest args)))
+    ((string= (first args) "diff-report-registry")
+     (%store-cli-diff-report-registry (rest args)))
     (t
      (cl-py.internal:signal-cli-usage-error
       (format nil "Unknown store subcommand: ~A" (first args))

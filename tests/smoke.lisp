@@ -1,6 +1,7 @@
 #+sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
-        (require :sb-bsd-sockets))
+        (require :sb-bsd-sockets)
+        (require :sb-posix))
 
 (defpackage #:cl-py-tests
   (:use #:cl)
@@ -13,6 +14,7 @@
                 #:find-adapter
                 #:format-iso-timestamp
                 #:diff-registry-snapshots
+                #:diff-registry-snapshot-reports
                 #:load-registry-snapshot
                 #:latest-registry-snapshot-id
                 #:list-adapters
@@ -24,6 +26,7 @@
                 #:parse-iso-timestamp
                 #:parse-dateutil-isodatetime
                 #:registry-adapter-history
+                #:report-registry-snapshot
                 #:run-bounded-task-batch
                 #:save-registry-snapshot
                 #:slugify-text
@@ -34,6 +37,25 @@
 (in-package #:cl-py-tests)
 
 (defvar *failures* 0)
+
+(defun %json-object-entry (value key)
+        (cdr (assoc key (cdr value) :test #'string=)))
+
+#+sbcl
+(defun %call-with-environment-variable (name value thunk)
+        (let ((previous (sb-posix:getenv name)))
+                (unwind-protect
+                                (progn
+                                        (sb-posix:setenv name value 1)
+                                        (funcall thunk))
+                        (if previous
+                                        (sb-posix:setenv name previous 1)
+                                        (sb-posix:unsetenv name)))))
+
+#-sbcl
+(defun %call-with-environment-variable (name value thunk)
+        (declare (ignore name value))
+        (funcall thunk))
 
 (defun %capture-output (thunk)
         (with-output-to-string (stream)
@@ -303,7 +325,7 @@
 (defun %native-store-query-test ()
   (%with-temporary-store-directory
    (lambda (directory)
-     (let* ((baseline-path (save-registry-snapshot :directory directory :snapshot-id "baseline"))
+                 (let* ((baseline-path (save-registry-snapshot :directory directory :snapshot-id "baseline"))
             (nightly-path (save-registry-snapshot :directory directory :snapshot-id "nightly"))
             (baseline (load-registry-snapshot "baseline" :directory directory))
             (entries (cdr baseline)))
@@ -312,33 +334,264 @@
                                :direction :output
                                :if-exists :supersede
                                :if-does-not-exist :create)
+           (let* ((all-adapters (coerce (cdr (assoc "adapters" entries :test #'string=)) 'list))
+                        (nightly-adapters (remove-if (lambda (adapter)
+                                                                (member (%json-object-entry adapter "id")
+                                                                          '("jsonschema" "slugify")
+                                                                          :test #'string=))
+                                                            all-adapters)))
          (write-string
           (emit-json
            (list :object
                  (cons "snapshot-id" "nightly")
                  (cons "created-at" (cdr (assoc "created-at" entries :test #'string=)))
-                 (cons "adapter-count" 3)
-                 (cons "adapters"
-                       (coerce (subseq (coerce (cdr (assoc "adapters" entries :test #'string=)) 'list) 0 3)
-                               'vector))))
+                     (cons "adapter-count" (length nightly-adapters))
+                     (cons "adapters" (coerce nightly-adapters 'vector))))
           stream)
+           )
          (terpri stream))
        (let* ((latest (latest-registry-snapshot-id :directory directory))
               (summary (summarize-registry-snapshot "baseline" :directory directory))
               (diff (diff-registry-snapshots "baseline" "nightly" :directory directory))
-              (history (registry-adapter-history "slugify" :directory directory))
+              (history (registry-adapter-history "jsonschema" :directory directory))
+              (report (report-registry-snapshot "baseline" :directory directory))
+              (sorted-report (report-registry-snapshot "baseline"
+                                                      :directory directory
+                                                      :sort "count-desc"))
+              (limited-report (report-registry-snapshot "baseline"
+                                                       :directory directory
+                                                       :sort "count-desc"
+                                                       :limit 2))
+              (offset-report (report-registry-snapshot "baseline"
+                                                      :directory directory
+                                                      :sort "count-desc"
+                                                      :offset 1
+                                                      :limit 2))
+              (filtered-report (report-registry-snapshot "baseline"
+                                                         :directory directory
+                                                         :capability "slugify-text"))
+              (excluded-report (report-registry-snapshot "baseline"
+                                                         :directory directory
+                                                         :exclude-capability "metadata"))
+              (multi-filtered-report (report-registry-snapshot "baseline"
+                                                               :directory directory
+                                                               :capabilities '("slugify-text" "validate-instance")))
+              (report-diff (diff-registry-snapshot-reports "baseline"
+                                                           "nightly"
+                                                           :directory directory))
+              (sorted-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                  "nightly"
+                                                                  :directory directory
+                                                                  :sort "delta-asc"))
+              (abs-sorted-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                      "nightly"
+                                                                      :directory directory
+                                                                      :sort "abs-delta-desc"))
+              (offset-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                  "nightly"
+                                                                  :directory directory
+                                                                  :sort "abs-delta-desc"
+                                                                  :offset 1
+                                                                  :limit 1))
+              (limited-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                   "nightly"
+                                                                   :directory directory
+                                                                   :sort "delta-asc"
+                                                                   :limit 1))
+              (filtered-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                    "nightly"
+                                                                    :directory directory
+                                                                    :capability "validate-instance"))
+              (excluded-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                    "nightly"
+                                                                    :directory directory
+                                                                    :exclude-license "MIT"))
+              (multi-filtered-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                         "nightly"
+                                                                         :directory directory
+                                                                         :capabilities '("slugify-text" "validate-instance")))
               (summary-entries (cdr summary))
-              (diff-entries (cdr diff)))
+              (diff-entries (cdr diff))
+              (report-entries (cdr report))
+              (sorted-report-entries (cdr sorted-report))
+              (limited-report-entries (cdr limited-report))
+              (offset-report-entries (cdr offset-report))
+              (filtered-report-entries (cdr filtered-report))
+              (excluded-report-entries (cdr excluded-report))
+              (multi-filtered-report-entries (cdr multi-filtered-report))
+              (filtered-filters (%json-object-entry filtered-report "filters"))
+              (excluded-filters (%json-object-entry excluded-report "filters"))
+              (multi-filtered-filters (%json-object-entry multi-filtered-report "filters"))
+              (filtered-capabilities (%json-object-entry filtered-report "capability-counts"))
+              (excluded-capabilities (%json-object-entry excluded-report "capability-counts"))
+              (report-diff-capabilities (%json-object-entry report-diff "capability-count-diff"))
+              (sorted-report-capabilities (%json-object-entry sorted-report "capability-counts"))
+              (limited-report-capabilities (%json-object-entry limited-report "capability-counts"))
+              (limited-report-license-page (%json-object-entry limited-report "license-counts-page"))
+              (limited-report-capability-page (%json-object-entry limited-report "capability-counts-page"))
+              (offset-report-capabilities (%json-object-entry offset-report "capability-counts"))
+              (offset-report-capability-page (%json-object-entry offset-report "capability-counts-page"))
+              (sorted-report-diff-capabilities (%json-object-entry sorted-report-diff "capability-count-diff"))
+              (abs-sorted-report-diff-capabilities (%json-object-entry abs-sorted-report-diff "capability-count-diff"))
+              (offset-report-diff-capabilities (%json-object-entry offset-report-diff "capability-count-diff"))
+              (offset-report-diff-capability-page (%json-object-entry offset-report-diff "capability-count-diff-page"))
+              (limited-report-diff-capabilities (%json-object-entry limited-report-diff "capability-count-diff"))
+              (limited-report-diff-capability-page (%json-object-entry limited-report-diff "capability-count-diff-page"))
+              (filtered-report-diff-capabilities (%json-object-entry filtered-report-diff "capability-count-diff"))
+              (filtered-report-diff-filters (%json-object-entry filtered-report-diff "filters"))
+              (excluded-report-diff-filters (%json-object-entry excluded-report-diff "filters"))
+              (excluded-report-diff-licenses (%json-object-entry excluded-report-diff "license-count-diff"))
+              (multi-filtered-report-diff-capabilities (%json-object-entry multi-filtered-report-diff "capability-count-diff"))
+              (multi-filtered-report-diff-filters (%json-object-entry multi-filtered-report-diff "filters")))
          (%check (string= "nightly" latest)
                  "native store queries return the latest snapshot id")
          (%check (vectorp (cdr (assoc "adapter-ids" summary-entries :test #'string=)))
                  "native store summary returns adapter id vectors")
-         (%check (= 1 (length (cdr (assoc "removed-adapter-ids" diff-entries :test #'string=))))
+         (%check (= 2 (length (cdr (assoc "removed-adapter-ids" diff-entries :test #'string=))))
                  "native store diff reports removed adapters between snapshots")
          (%check (= 2 (length history))
                  "native store adapter history returns one record per snapshot")
          (%check (eq :false (cdr (assoc "present" (cdr (aref history 1)) :test #'string=)))
-                 "native store adapter history records adapter absence in later snapshots"))))))
+                 "native store adapter history records adapter absence in later snapshots")
+         (%check (vectorp (cdr (assoc "license-counts" report-entries :test #'string=)))
+                 "native store report returns license aggregates")
+         (%check (vectorp (cdr (assoc "capability-counts" report-entries :test #'string=)))
+                 "native store report returns capability aggregates")
+         (%check (string= "count-desc" (%json-object-entry sorted-report "sort"))
+                 "native store report returns the applied sort mode")
+         (%check (string= "metadata" (%json-object-entry (aref sorted-report-capabilities 0) "name"))
+                 "native store report can sort aggregate rows by descending count")
+         (%check (= 2 (%json-object-entry limited-report "limit"))
+                 "native store report returns the applied row limit")
+         (%check (= 2 (length limited-report-capabilities))
+                 "native store report can limit aggregate rows after sorting")
+         (%check (= 2 (%json-object-entry limited-report-license-page "returned-count"))
+                 "native store report includes pagination metadata for license aggregates")
+         (%check (= (%json-object-entry limited-report-capability-page "total-count")
+                    (+ (%json-object-entry limited-report-capability-page "returned-count")
+                       (%json-object-entry limited-report-capability-page "remaining-count")))
+                 "native store report pagination metadata tracks total and remaining rows")
+         (%check (= 1 (%json-object-entry offset-report "offset"))
+                 "native store report returns the applied row offset")
+         (%check (string= "version" (%json-object-entry (aref offset-report-capabilities 0) "name"))
+                 "native store report can offset rows after sorting")
+         (%check (= (%json-object-entry offset-report-capability-page "total-count")
+                    (+ (%json-object-entry offset-report-capability-page "offset")
+                       (%json-object-entry offset-report-capability-page "returned-count")
+                       (%json-object-entry offset-report-capability-page "remaining-count")))
+                 "native store report pagination metadata accounts for offsets")
+         (%check (= 1 (%json-object-entry filtered-report "adapter-count"))
+                 "native store report can filter adapters by capability")
+         (%check (= 0 (%json-object-entry excluded-report "adapter-count"))
+                 "native store report can exclude adapters by capability")
+         (%check (= 2 (%json-object-entry multi-filtered-report "adapter-count"))
+                 "native store report can filter adapters by multiple capabilities")
+         (%check (= 4 (%json-object-entry filtered-report "total-adapter-count"))
+                 "native store report preserves total snapshot size when filtered")
+         (%check (string= "slugify-text" (%json-object-entry filtered-filters "capability"))
+                 "native store report includes applied capability filters")
+         (%check (= 2 (length (%json-object-entry multi-filtered-filters "capabilities")))
+                 "native store report exposes multiple capability filters")
+         (%check (string= "metadata" (%json-object-entry excluded-filters "exclude-capability"))
+                 "native store report includes applied exclusion filters")
+         (%check (and (vectorp filtered-capabilities)
+                      (find "slugify-text" filtered-capabilities
+                            :test #'string=
+                            :key (lambda (entry)
+                                   (%json-object-entry entry "name"))))
+                 "native store report narrows aggregate rows after filtering")
+         (%check (= 0 (length excluded-capabilities))
+                 "native store report removes excluded capability aggregates")
+         (%check (and (vectorp report-diff-capabilities)
+                      (find "validate-instance" report-diff-capabilities
+                            :test #'string=
+                            :key (lambda (entry)
+                                   (%json-object-entry entry "name"))))
+                 "native store report diff captures changed capability counts")
+         (%check (string= "delta-asc" (%json-object-entry sorted-report-diff "sort"))
+                 "native store report diff returns the applied sort mode")
+         (%check (string= "metadata" (%json-object-entry (aref sorted-report-diff-capabilities 0) "name"))
+                 "native store report diff can sort rows by ascending delta")
+         (%check (string= "abs-delta-desc" (%json-object-entry abs-sorted-report-diff "sort"))
+                 "native store report diff returns the applied abs-delta sort mode")
+         (%check (string= "metadata" (%json-object-entry (aref abs-sorted-report-diff-capabilities 0) "name"))
+                 "native store report diff can sort rows by descending absolute delta")
+         (%check (= 1 (%json-object-entry offset-report-diff "offset"))
+                 "native store report diff returns the applied row offset")
+         (%check (string= "version" (%json-object-entry (aref offset-report-diff-capabilities 0) "name"))
+                 "native store report diff can offset rows after sorting")
+         (%check (= 1 (%json-object-entry limited-report-diff "limit"))
+                 "native store report diff returns the applied row limit")
+         (%check (= 1 (length limited-report-diff-capabilities))
+                 "native store report diff can limit rows after sorting")
+         (%check (= 1 (%json-object-entry limited-report-diff-capability-page "returned-count"))
+                 "native store report diff includes pagination metadata for diff rows")
+         (%check (and (vectorp filtered-report-diff-capabilities)
+                         (find "validate-instance" filtered-report-diff-capabilities
+                                :test #'string=
+                                :key (lambda (entry)
+                                        (%json-object-entry entry "name")))
+                         (= -1 (%json-object-entry
+                                 (find "validate-instance" filtered-report-diff-capabilities
+                                        :test #'string=
+                                        :key (lambda (entry)
+                                                (%json-object-entry entry "name")))
+                                 "delta")))
+                 "native store report diff applies capability filters before diffing")
+         (%check (string= "validate-instance"
+                          (%json-object-entry filtered-report-diff-filters "capability"))
+                 "native store report diff returns applied filters")
+         (%check (string= "MIT" (%json-object-entry excluded-report-diff-filters "exclude-license"))
+                 "native store report diff returns exclusion filters")
+         (%check (= 0 (length excluded-report-diff-licenses))
+                 "native store report diff excludes matching license rows before diffing")
+         (%check (and (vectorp multi-filtered-report-diff-capabilities)
+                      (find "validate-instance" multi-filtered-report-diff-capabilities
+                            :test #'string=
+                            :key (lambda (entry)
+                                   (%json-object-entry entry "name"))))
+                 "native store report diff supports multiple capability filters")
+         (%check (= 2 (length (%json-object-entry multi-filtered-report-diff-filters "capabilities")))
+                 "native store report diff exposes multiple capability filters")
+         (%check (= (%json-object-entry offset-report-diff-capability-page "total-count")
+                    (+ (%json-object-entry offset-report-diff-capability-page "offset")
+                       (%json-object-entry offset-report-diff-capability-page "returned-count")
+                       (%json-object-entry offset-report-diff-capability-page "remaining-count")))
+                 "native store report diff pagination metadata accounts for offsets")
+         (let* ((report-output-path (merge-pathnames "exports/report.json" directory))
+                (diff-output-path (merge-pathnames "exports/diff.json" directory))
+                (report-command-output
+                  (%capture-output
+                   (lambda ()
+                                                                                 (%call-with-environment-variable
+                                                                                        "CL_PY_STORE_DIR"
+                                                                                        (namestring directory)
+                                                                                        (lambda ()
+                                                                                                (cl-py.internal:dispatch-top-level-command
+                                                                                                 (list "store" "report-registry" "baseline" "--output" (namestring report-output-path))))))))
+                (diff-command-output
+                  (%capture-output
+                   (lambda ()
+                                                                                 (%call-with-environment-variable
+                                                                                        "CL_PY_STORE_DIR"
+                                                                                        (namestring directory)
+                                                                                        (lambda ()
+                                                                                                (cl-py.internal:dispatch-top-level-command
+                                                                                                 (list "store" "diff-report-registry" "baseline" "nightly" "--output" (namestring diff-output-path))))))))
+                (report-output-json (uiop:read-file-string report-output-path))
+                (diff-output-json (uiop:read-file-string diff-output-path)))
+           (%check (probe-file report-output-path)
+                   "native store report can export output to a file")
+           (%check (search (namestring report-output-path) report-command-output)
+                   "native store report prints the export path when writing a file")
+           (%check (search "\"snapshot-id\":\"baseline\"" report-output-json)
+                   "native store report export writes the JSON payload")
+           (%check (probe-file diff-output-path)
+                   "native store report diff can export output to a file")
+           (%check (search (namestring diff-output-path) diff-command-output)
+                   "native store report diff prints the export path when writing a file")
+           (%check (search "\"left-snapshot-id\":\"baseline\"" diff-output-json)
+                   "native store report diff export writes the JSON payload")))))))
 
 (defun %snapshot-path-for-test (directory snapshot-id)
   (merge-pathnames (format nil "registry/~A.json" snapshot-id)
@@ -447,6 +700,28 @@
             "store help prints query subcommands")
     (%check (search "adapter-history" output)
             "store help prints adapter history queries")
+    (%check (search "report-registry" output)
+            "store help prints aggregate report queries")
+    (%check (search "diff-report-registry" output)
+            "store help prints aggregate report diff queries")
+    (%check (search "--capability" output)
+            "store help prints report capability filters")
+    (%check (search "--license" output)
+            "store help prints report license filters")
+    (%check (search "--exclude-license" output)
+            "store help prints report exclusion filters")
+    (%check (search "--exclude-capability" output)
+            "store help prints report capability exclusions")
+    (%check (search "--sort" output)
+            "store help prints report sort flags")
+    (%check (search "--offset" output)
+            "store help prints report row offsets")
+    (%check (search "--limit" output)
+            "store help prints report row limits")
+    (%check (search "--output" output)
+            "store help prints report output paths")
+    (%check (search "--capability slugify-text --capability validate-instance" output)
+            "store help demonstrates repeated capability filters")
     (%check (search "CL_PY_STORE_DIR" output)
             "store help describes store directory override")
     (%check (search "nightly" output)

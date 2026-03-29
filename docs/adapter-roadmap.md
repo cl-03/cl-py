@@ -197,7 +197,9 @@ Current status:
 - A lightweight native persistence slice now exists for registry snapshots through the `store`
   command group and matching Lisp API.
 - The store layer now also supports snapshot queries for latest snapshot lookup, summary output,
-  snapshot diffs, and adapter history.
+  snapshot diffs, adapter history, aggregate reports, filtered aggregate reports,
+  exclusion filters, row sorting, row offsets, row limits, absolute-delta sorting,
+  file export, per-result pagination metadata, and aggregate report diffs.
 - This does not replace the broader database-backed roadmap. It reduces risk by establishing local
   persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 

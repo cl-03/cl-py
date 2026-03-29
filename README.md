@@ -216,6 +216,17 @@ Current capabilities:
 - Load a snapshot back into the native JSON data model
 - Query the latest, summarized, and diffed view of stored snapshots
 - Query per-adapter history across stored snapshots
+- Build aggregate snapshot reports grouped by license and capability
+- Filter aggregate reports by license or capability before counting
+- Compare aggregate report deltas between two snapshots
+- Combine multiple `--license` or `--capability` filters in the same report query
+- Sort aggregate report rows by count and diff rows by delta
+- Exclude licenses or capabilities from report and diff-report queries
+- Limit report and diff-report result rows after sorting
+- Sort diff-report rows by absolute delta magnitude
+- Page sorted report rows with offsets before applying limits
+- Return per-result pagination metadata for aggregate and diff rows
+- Export report and diff-report JSON directly to files from the CLI
 - Redirect snapshot storage with `CL_PY_STORE_DIR`
 
 ## Native Concurrency Utilities

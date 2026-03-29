@@ -116,6 +116,24 @@ sbcl --script scripts/dev-cli.lisp store latest-registry
 sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
 sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
 sbcl --script scripts/dev-cli.lisp store adapter-history slugify
+sbcl --script scripts/dev-cli.lisp store report-registry nightly
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text --capability validate-instance
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --exclude-capability metadata
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --offset 1 --limit 2
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --limit 2
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --output reports/nightly.json
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --license "MIT"
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --capability validate-instance
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --exclude-license "MIT"
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc --offset 1 --limit 1
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --output reports/diff.json
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc --limit 1
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --license "MIT" --license "Apache-2.0"
 sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -131,7 +149,8 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Use `CL_PY_STORE_DIR` to redirect the store root to another directory
 - Snapshots are written as canonical JSON for easy inspection and reuse
 - The current first slice is intentionally small and focused on registry persistence
-- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, and adapter history
+- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, row sorting, row offsets, row limits, absolute-delta sorting, file export, and aggregate report diffs
+- Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner
 
