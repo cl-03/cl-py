@@ -134,6 +134,29 @@
       (first values)
       :null))
 
+(defun %normalize-report-groups (values)
+  (let ((requested (%normalize-filter-values values)))
+    (dolist (value requested)
+      (unless (member value '("license" "capability") :test #'string=)
+        (%store-error "Unsupported report group: ~A" value)))
+    (let ((groups nil))
+      (when (member "license" requested :test #'string=)
+        (push "license" groups))
+      (when (member "capability" requested :test #'string=)
+        (push "capability" groups))
+      (nreverse groups))))
+
+(defun %effective-report-groups (single multiple)
+  (let ((groups (%normalize-report-groups
+                 (append (when single (list single))
+                         (copy-list multiple)))))
+    (if groups
+        groups
+        '("license" "capability"))))
+
+(defun %report-has-group-p (groups group)
+  (member group groups :test #'string=))
+
 (defun %report-entry-name (entry)
   (%snapshot-entry entry "name"))
 
@@ -228,6 +251,13 @@
      #'%print-store-usage))
   sort-mode)
 
+(defun %validate-report-group (group command-name)
+  (unless (member group '("license" "capability") :test #'string=)
+    (cl-py.internal:signal-cli-usage-error
+     (format nil "~A requires --group to be one of: license, capability" command-name)
+     #'%print-store-usage))
+  group)
+
 (defun %validate-diff-report-sort-mode (sort-mode)
   (unless (member sort-mode '("name" "delta-asc" "delta-desc" "abs-delta-asc" "abs-delta-desc") :test #'string=)
     (cl-py.internal:signal-cli-usage-error
@@ -292,9 +322,10 @@
 
 (defun %counts-vector-table (entries)
   (let ((table (make-hash-table :test #'equal)))
-    (loop for entry across entries
-          do (setf (gethash (%snapshot-entry entry "name") table)
-                   (%snapshot-entry entry "count")))
+    (when entries
+      (loop for entry across entries
+            do (setf (gethash (%snapshot-entry entry "name") table)
+                     (%snapshot-entry entry "count"))))
     table))
 
 (defun %diff-count-vectors (left right)
@@ -320,13 +351,14 @@
 (defun %parse-report-registry-args (args)
   (let ((snapshot-id nil)
         (licenses nil)
-    (capabilities nil)
-    (excluded-licenses nil)
-    (excluded-capabilities nil)
-    (sort-mode "name")
-  (limit nil)
-  (offset nil)
-  (output-path nil))
+        (capabilities nil)
+        (excluded-licenses nil)
+        (excluded-capabilities nil)
+        (groups nil)
+        (sort-mode "name")
+        (limit nil)
+        (offset nil)
+        (output-path nil))
     (loop while args
           for argument = (pop args)
           do (cond
@@ -354,6 +386,12 @@
                    "store report-registry requires a value after --exclude-capability"
                    #'%print-store-usage))
                 (push (pop args) excluded-capabilities))
+               ((string= argument "--group")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store report-registry requires a value after --group"
+                   #'%print-store-usage))
+                (push (%validate-report-group (pop args) "store report-registry") groups))
                ((string= argument "--sort")
                 (unless args
                   (cl-py.internal:signal-cli-usage-error
@@ -391,10 +429,11 @@
     (values snapshot-id
             (%normalize-filter-values (nreverse licenses))
             (%normalize-filter-values (nreverse capabilities))
-          (%normalize-filter-values (nreverse excluded-licenses))
-          (%normalize-filter-values (nreverse excluded-capabilities))
-          sort-mode
-          limit
+            (%normalize-filter-values (nreverse excluded-licenses))
+            (%normalize-filter-values (nreverse excluded-capabilities))
+            (%effective-report-groups nil (nreverse groups))
+            sort-mode
+            limit
             offset
             output-path)))
 
@@ -402,13 +441,14 @@
   (let ((left-snapshot-id nil)
         (right-snapshot-id nil)
         (licenses nil)
-    (capabilities nil)
-    (excluded-licenses nil)
-    (excluded-capabilities nil)
-    (sort-mode "name")
-  (limit nil)
-  (offset nil)
-  (output-path nil))
+        (capabilities nil)
+        (excluded-licenses nil)
+        (excluded-capabilities nil)
+        (groups nil)
+        (sort-mode "name")
+        (limit nil)
+        (offset nil)
+        (output-path nil))
     (loop while args
           for argument = (pop args)
           do (cond
@@ -436,6 +476,12 @@
                    "store diff-report-registry requires a value after --exclude-capability"
                    #'%print-store-usage))
                 (push (pop args) excluded-capabilities))
+               ((string= argument "--group")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store diff-report-registry requires a value after --group"
+                   #'%print-store-usage))
+                (push (%validate-report-group (pop args) "store diff-report-registry") groups))
                ((string= argument "--sort")
                 (unless args
                   (cl-py.internal:signal-cli-usage-error
@@ -480,10 +526,11 @@
             right-snapshot-id
             (%normalize-filter-values (nreverse licenses))
             (%normalize-filter-values (nreverse capabilities))
-          (%normalize-filter-values (nreverse excluded-licenses))
-          (%normalize-filter-values (nreverse excluded-capabilities))
-          sort-mode
-          limit
+            (%normalize-filter-values (nreverse excluded-licenses))
+            (%normalize-filter-values (nreverse excluded-capabilities))
+            (%effective-report-groups nil (nreverse groups))
+            sort-mode
+            limit
             offset
             output-path)))
 
@@ -499,12 +546,13 @@
           (cons "adapter-count" (%snapshot-entry snapshot "adapter-count"))
           (cons "adapter-ids" (coerce adapter-ids 'vector)))))
 
-(defun report-registry-snapshot (snapshot-id &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities (sort "name") limit offset)
+(defun report-registry-snapshot (snapshot-id &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities group groups (sort "name") limit offset)
   (let* ((snapshot (load-registry-snapshot snapshot-id :directory directory))
          (effective-licenses (%effective-filter-values license licenses))
          (effective-capabilities (%effective-filter-values capability capabilities))
          (effective-excluded-licenses (%effective-filter-values exclude-license exclude-licenses))
          (effective-excluded-capabilities (%effective-filter-values exclude-capability exclude-capabilities))
+         (effective-groups (%effective-report-groups group groups))
          (all-adapters (coerce (%snapshot-adapters snapshot) 'list))
          (adapters (remove-if-not (lambda (adapter)
                                     (%report-matches-filters-p adapter effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
@@ -524,22 +572,27 @@
         (%paginate-rows (%sort-report-rows license-counts sort) offset limit)
       (multiple-value-bind (paged-capability-counts capability-counts-page)
           (%paginate-rows (%sort-report-rows capability-counts sort) offset limit)
-        (list :object
-              (cons "snapshot-id" (%snapshot-entry snapshot "snapshot-id"))
-              (cons "created-at" (%snapshot-created-at snapshot))
-              (cons "adapter-count" (length adapters))
-              (cons "total-adapter-count" (%snapshot-entry snapshot "adapter-count"))
-              (cons "sort" sort)
-              (cons "limit" (or limit :null))
-              (cons "offset" (or offset :null))
-              (cons "filters" (%report-filter-object effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
-              (cons "license-counts-page" license-counts-page)
-              (cons "license-counts" (coerce paged-license-counts 'vector))
-              (cons "capability-counts-page" capability-counts-page)
-              (cons "capability-counts" (coerce paged-capability-counts 'vector)))))))
+        (append
+         (list :object
+           (cons "snapshot-id" (%snapshot-entry snapshot "snapshot-id"))
+           (cons "created-at" (%snapshot-created-at snapshot))
+           (cons "adapter-count" (length adapters))
+           (cons "total-adapter-count" (%snapshot-entry snapshot "adapter-count"))
+           (cons "group" (%single-or-null effective-groups))
+           (cons "groups" (coerce effective-groups 'vector))
+           (cons "sort" sort)
+           (cons "limit" (or limit :null))
+           (cons "offset" (or offset :null))
+           (cons "filters" (%report-filter-object effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities)))
+         (when (%report-has-group-p effective-groups "license")
+           (list (cons "license-counts-page" license-counts-page)
+             (cons "license-counts" (coerce paged-license-counts 'vector))))
+         (when (%report-has-group-p effective-groups "capability")
+           (list (cons "capability-counts-page" capability-counts-page)
+             (cons "capability-counts" (coerce paged-capability-counts 'vector)))))))))
 
 (defun diff-registry-snapshot-reports (left-snapshot-id right-snapshot-id
-                                       &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities (sort "name") limit offset)
+                   &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities group groups (sort "name") limit offset)
   (let* ((left-report (report-registry-snapshot left-snapshot-id
                                                 :directory directory
                                                 :license license
@@ -549,7 +602,9 @@
                                                 :exclude-license exclude-license
                                                 :exclude-capability exclude-capability
                                                 :exclude-licenses exclude-licenses
-                                                :exclude-capabilities exclude-capabilities))
+                    :exclude-capabilities exclude-capabilities
+                    :group group
+                    :groups groups))
          (right-report (report-registry-snapshot right-snapshot-id
                                                  :directory directory
                                                  :license license
@@ -559,11 +614,14 @@
                                                  :exclude-license exclude-license
                                                  :exclude-capability exclude-capability
                                                  :exclude-licenses exclude-licenses
-                                                 :exclude-capabilities exclude-capabilities))
+                     :exclude-capabilities exclude-capabilities
+                     :group group
+                     :groups groups))
          (effective-licenses (%effective-filter-values license licenses))
          (effective-capabilities (%effective-filter-values capability capabilities))
          (effective-excluded-licenses (%effective-filter-values exclude-license exclude-licenses))
          (effective-excluded-capabilities (%effective-filter-values exclude-capability exclude-capabilities))
+         (effective-groups (%effective-report-groups group groups))
          (license-count-diff-rows (coerce (%diff-count-vectors (%snapshot-entry left-report "license-counts")
                                                                 (%snapshot-entry right-report "license-counts"))
                                           'list))
@@ -579,21 +637,26 @@
         (%paginate-rows (%sort-diff-report-rows license-count-diff-rows sort) offset limit)
       (multiple-value-bind (paged-capability-count-diff capability-count-diff-page)
           (%paginate-rows (%sort-diff-report-rows capability-count-diff-rows sort) offset limit)
-        (list :object
-              (cons "left-snapshot-id" left-snapshot-id)
-              (cons "right-snapshot-id" right-snapshot-id)
-              (cons "sort" sort)
-              (cons "limit" (or limit :null))
-              (cons "offset" (or offset :null))
-              (cons "filters" (%report-filter-object effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
-              (cons "left-adapter-count" (%snapshot-entry left-report "adapter-count"))
-              (cons "right-adapter-count" (%snapshot-entry right-report "adapter-count"))
-              (cons "left-total-adapter-count" (%snapshot-entry left-report "total-adapter-count"))
-              (cons "right-total-adapter-count" (%snapshot-entry right-report "total-adapter-count"))
-              (cons "license-count-diff-page" license-count-diff-page)
-              (cons "license-count-diff" (coerce paged-license-count-diff 'vector))
-              (cons "capability-count-diff-page" capability-count-diff-page)
-              (cons "capability-count-diff" (coerce paged-capability-count-diff 'vector)))))))
+        (append
+         (list :object
+           (cons "left-snapshot-id" left-snapshot-id)
+           (cons "right-snapshot-id" right-snapshot-id)
+           (cons "group" (%single-or-null effective-groups))
+           (cons "groups" (coerce effective-groups 'vector))
+           (cons "sort" sort)
+           (cons "limit" (or limit :null))
+           (cons "offset" (or offset :null))
+           (cons "filters" (%report-filter-object effective-licenses effective-capabilities effective-excluded-licenses effective-excluded-capabilities))
+           (cons "left-adapter-count" (%snapshot-entry left-report "adapter-count"))
+           (cons "right-adapter-count" (%snapshot-entry right-report "adapter-count"))
+           (cons "left-total-adapter-count" (%snapshot-entry left-report "total-adapter-count"))
+           (cons "right-total-adapter-count" (%snapshot-entry right-report "total-adapter-count")))
+         (when (%report-has-group-p effective-groups "license")
+           (list (cons "license-count-diff-page" license-count-diff-page)
+             (cons "license-count-diff" (coerce paged-license-count-diff 'vector))))
+         (when (%report-has-group-p effective-groups "capability")
+           (list (cons "capability-count-diff-page" capability-count-diff-page)
+             (cons "capability-count-diff" (coerce paged-capability-count-diff 'vector)))))))))
 
 (defun diff-registry-snapshots (left-snapshot-id right-snapshot-id &key directory)
   (let* ((left (load-registry-snapshot left-snapshot-id :directory directory))
@@ -649,8 +712,8 @@
   (format t "  store summarize-registry <snapshot-id>~%")
   (format t "  store diff-registry <left-snapshot-id> <right-snapshot-id>~%")
   (format t "  store adapter-history <adapter-id>~%")
-  (format t "  store report-registry <snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--sort <name|count-asc|count-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%")
-  (format t "  store diff-report-registry <left-snapshot-id> <right-snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--sort <name|delta-asc|delta-desc|abs-delta-asc|abs-delta-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%"))
+  (format t "  store report-registry <snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--group <license|capability>] [--sort <name|count-asc|count-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%")
+  (format t "  store diff-report-registry <left-snapshot-id> <right-snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--group <license|capability>] [--sort <name|delta-asc|delta-desc|abs-delta-asc|abs-delta-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%"))
 
 (defun %print-store-help ()
   (%print-store-usage)
@@ -670,6 +733,7 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text --capability validate-instance~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --exclude-capability metadata~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --group capability~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --offset 1 --limit 2~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --output reports/nightly.json~%")
@@ -678,6 +742,7 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --capability validate-instance~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --exclude-license MIT~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --group license~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc --offset 1 --limit 1~%")
@@ -715,7 +780,7 @@
   (format t "~A~%" (emit-json (registry-adapter-history adapter-id))))
 
 (defun %store-cli-report-registry (args)
-  (multiple-value-bind (snapshot-id licenses capabilities excluded-licenses excluded-capabilities sort-mode limit offset output-path)
+  (multiple-value-bind (snapshot-id licenses capabilities excluded-licenses excluded-capabilities groups sort-mode limit offset output-path)
       (%parse-report-registry-args args)
     (%emit-cli-json-output
      (report-registry-snapshot snapshot-id
@@ -723,13 +788,14 @@
                                :capabilities capabilities
                                :exclude-licenses excluded-licenses
                                :exclude-capabilities excluded-capabilities
+                               :groups groups
                                :sort sort-mode
                                :limit limit
                                :offset offset)
      :output-path output-path)))
 
 (defun %store-cli-diff-report-registry (args)
-  (multiple-value-bind (left-snapshot-id right-snapshot-id licenses capabilities excluded-licenses excluded-capabilities sort-mode limit offset output-path)
+  (multiple-value-bind (left-snapshot-id right-snapshot-id licenses capabilities excluded-licenses excluded-capabilities groups sort-mode limit offset output-path)
       (%parse-diff-report-registry-args args)
     (%emit-cli-json-output
      (diff-registry-snapshot-reports left-snapshot-id
@@ -738,6 +804,7 @@
                                      :capabilities capabilities
                                      :exclude-licenses excluded-licenses
                                      :exclude-capabilities excluded-capabilities
+                                     :groups groups
                                      :sort sort-mode
                                      :limit limit
                                      :offset offset)

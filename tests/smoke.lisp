@@ -370,6 +370,9 @@
               (filtered-report (report-registry-snapshot "baseline"
                                                          :directory directory
                                                          :capability "slugify-text"))
+              (license-only-report (report-registry-snapshot "baseline"
+                                                             :directory directory
+                                                             :group "license"))
               (excluded-report (report-registry-snapshot "baseline"
                                                          :directory directory
                                                          :exclude-capability "metadata"))
@@ -402,6 +405,10 @@
                                                                     "nightly"
                                                                     :directory directory
                                                                     :capability "validate-instance"))
+              (license-only-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                       "nightly"
+                                                                       :directory directory
+                                                                       :group "license"))
               (excluded-report-diff (diff-registry-snapshot-reports "baseline"
                                                                     "nightly"
                                                                     :directory directory
@@ -420,6 +427,7 @@
               (excluded-report-entries (cdr excluded-report))
               (multi-filtered-report-entries (cdr multi-filtered-report))
               (filtered-filters (%json-object-entry filtered-report "filters"))
+              (license-only-report-licenses (%json-object-entry license-only-report "license-counts"))
               (excluded-filters (%json-object-entry excluded-report "filters"))
               (multi-filtered-filters (%json-object-entry multi-filtered-report "filters"))
               (filtered-capabilities (%json-object-entry filtered-report "capability-counts"))
@@ -438,6 +446,7 @@
               (limited-report-diff-capabilities (%json-object-entry limited-report-diff "capability-count-diff"))
               (limited-report-diff-capability-page (%json-object-entry limited-report-diff "capability-count-diff-page"))
               (filtered-report-diff-capabilities (%json-object-entry filtered-report-diff "capability-count-diff"))
+              (license-only-report-diff-licenses (%json-object-entry license-only-report-diff "license-count-diff"))
               (filtered-report-diff-filters (%json-object-entry filtered-report-diff "filters"))
               (excluded-report-diff-filters (%json-object-entry excluded-report-diff "filters"))
               (excluded-report-diff-licenses (%json-object-entry excluded-report-diff "license-count-diff"))
@@ -482,6 +491,11 @@
                  "native store report pagination metadata accounts for offsets")
          (%check (= 1 (%json-object-entry filtered-report "adapter-count"))
                  "native store report can filter adapters by capability")
+         (%check (string= "license" (%json-object-entry license-only-report "group"))
+                 "native store report can select a single aggregate group")
+         (%check (and (vectorp license-only-report-licenses)
+                      (null (%json-object-entry license-only-report "capability-counts")))
+                 "native store report omits non-selected aggregate groups")
          (%check (= 0 (%json-object-entry excluded-report "adapter-count"))
                  "native store report can exclude adapters by capability")
          (%check (= 2 (%json-object-entry multi-filtered-report "adapter-count"))
@@ -526,6 +540,11 @@
                  "native store report diff can limit rows after sorting")
          (%check (= 1 (%json-object-entry limited-report-diff-capability-page "returned-count"))
                  "native store report diff includes pagination metadata for diff rows")
+         (%check (string= "license" (%json-object-entry license-only-report-diff "group"))
+                 "native store report diff can select a single aggregate group")
+         (%check (and (vectorp license-only-report-diff-licenses)
+                      (null (%json-object-entry license-only-report-diff "capability-count-diff")))
+                 "native store report diff omits non-selected diff groups")
          (%check (and (vectorp filtered-report-diff-capabilities)
                          (find "validate-instance" filtered-report-diff-capabilities
                                 :test #'string=
@@ -712,6 +731,8 @@
             "store help prints report exclusion filters")
     (%check (search "--exclude-capability" output)
             "store help prints report capability exclusions")
+    (%check (search "--group" output)
+            "store help prints aggregate group filters")
     (%check (search "--sort" output)
             "store help prints report sort flags")
     (%check (search "--offset" output)
@@ -722,6 +743,8 @@
             "store help prints report output paths")
     (%check (search "--capability slugify-text --capability validate-instance" output)
             "store help demonstrates repeated capability filters")
+    (%check (search "--group capability" output)
+            "store help demonstrates selecting a single aggregate group")
     (%check (search "CL_PY_STORE_DIR" output)
             "store help describes store directory override")
     (%check (search "nightly" output)

@@ -220,6 +220,7 @@ Current capabilities:
 - Filter aggregate reports by license or capability before counting
 - Compare aggregate report deltas between two snapshots
 - Combine multiple `--license` or `--capability` filters in the same report query
+- Restrict aggregate output to license rows or capability rows when needed
 - Sort aggregate report rows by count and diff rows by delta
 - Exclude licenses or capabilities from report and diff-report queries
 - Limit report and diff-report result rows after sorting
