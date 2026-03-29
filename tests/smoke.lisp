@@ -23,6 +23,7 @@
                 #:parse-json
                 #:parse-iso-timestamp
                 #:parse-dateutil-isodatetime
+                #:registry-adapter-history
                 #:run-bounded-task-batch
                 #:save-registry-snapshot
                 #:slugify-text
@@ -325,6 +326,7 @@
        (let* ((latest (latest-registry-snapshot-id :directory directory))
               (summary (summarize-registry-snapshot "baseline" :directory directory))
               (diff (diff-registry-snapshots "baseline" "nightly" :directory directory))
+              (history (registry-adapter-history "slugify" :directory directory))
               (summary-entries (cdr summary))
               (diff-entries (cdr diff)))
          (%check (string= "nightly" latest)
@@ -332,7 +334,11 @@
          (%check (vectorp (cdr (assoc "adapter-ids" summary-entries :test #'string=)))
                  "native store summary returns adapter id vectors")
          (%check (= 1 (length (cdr (assoc "removed-adapter-ids" diff-entries :test #'string=))))
-                 "native store diff reports removed adapters between snapshots"))))))
+                 "native store diff reports removed adapters between snapshots")
+         (%check (= 2 (length history))
+                 "native store adapter history returns one record per snapshot")
+         (%check (eq :false (cdr (assoc "present" (cdr (aref history 1)) :test #'string=)))
+                 "native store adapter history records adapter absence in later snapshots"))))))
 
 (defun %snapshot-path-for-test (directory snapshot-id)
   (merge-pathnames (format nil "registry/~A.json" snapshot-id)
@@ -439,6 +445,8 @@
             "store help prints store subcommands")
     (%check (search "diff-registry" output)
             "store help prints query subcommands")
+    (%check (search "adapter-history" output)
+            "store help prints adapter history queries")
     (%check (search "CL_PY_STORE_DIR" output)
             "store help describes store directory override")
     (%check (search "nightly" output)
