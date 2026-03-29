@@ -112,6 +112,8 @@ Useful commands:
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store delete-registry nightly
+sbcl --script scripts/dev-cli.lisp store prune-registry 5
 sbcl --script scripts/dev-cli.lisp store latest-registry
 sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
 sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
@@ -155,7 +157,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Use `CL_PY_STORE_DIR` to redirect the store root to another directory
 - Snapshots are written as canonical JSON for easy inspection and reuse
 - The current first slice is intentionally small and focused on registry persistence
-- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, group-selected output, row sorting, row offsets, row limits, per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export, and aggregate report diffs
+- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, group-selected output, row sorting, row offsets, row limits, per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export, aggregate report diffs, snapshot deletion, and snapshot pruning
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

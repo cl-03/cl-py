@@ -8,6 +8,8 @@
   (:import-from #:cl-py
                 #:adapter-id
                 #:adapter-metadata
+                #:delete-registry-snapshot
+                #:prune-registry-snapshots
                 #:emit-json
                 #:fetch-json
                 #:fetch-text
@@ -321,6 +323,39 @@
                "native store preserves snapshot identifiers")
        (%check (and (vectorp adapters) (plusp (length adapters)))
                "native store loads adapter snapshot payloads")))))
+
+(defun %native-store-lifecycle-test ()
+  (%with-temporary-store-directory
+   (lambda (directory)
+     (save-registry-snapshot :directory directory :snapshot-id "snapshot-001")
+     (save-registry-snapshot :directory directory :snapshot-id "snapshot-002")
+     (save-registry-snapshot :directory directory :snapshot-id "snapshot-003")
+     (let* ((deleted (delete-registry-snapshot "snapshot-002" :directory directory))
+            (after-delete (list-registry-snapshots :directory directory))
+            (pruned (prune-registry-snapshots 1 :directory directory))
+            (after-prune (list-registry-snapshots :directory directory))
+            (deleted-ids (%json-object-entry pruned "deleted-snapshot-ids"))
+            (kept-ids (%json-object-entry pruned "kept-snapshot-ids")))
+       (%check (eq :true (%json-object-entry deleted "deleted"))
+               "native store can delete a registry snapshot")
+       (%check (equal '("snapshot-003" "snapshot-001") after-delete)
+               "native store removes deleted snapshots from the listing")
+       (%check (= 1 (%json-object-entry pruned "keep-count"))
+               "native store prune reports the requested keep count")
+       (%check (= 1 (%json-object-entry pruned "kept-count"))
+               "native store prune reports the number of kept snapshots")
+       (%check (= 1 (%json-object-entry pruned "deleted-count"))
+               "native store prune reports the number of deleted snapshots")
+       (%check (and (vectorp kept-ids)
+                    (= 1 (length kept-ids))
+                    (string= "snapshot-003" (aref kept-ids 0)))
+               "native store prune keeps the most recent snapshots")
+       (%check (and (vectorp deleted-ids)
+                    (= 1 (length deleted-ids))
+                    (string= "snapshot-001" (aref deleted-ids 0)))
+               "native store prune reports deleted snapshot ids")
+       (%check (equal '("snapshot-003") after-prune)
+               "native store prune removes older snapshots from disk")))))
 
 (defun %native-store-query-test ()
   (%with-temporary-store-directory
@@ -778,6 +813,10 @@
                                    (cl-py.internal:print-command-help "store")))))
     (%check (search "snapshot-registry" output)
             "store help prints store subcommands")
+    (%check (search "delete-registry" output)
+            "store help prints snapshot delete subcommands")
+    (%check (search "prune-registry" output)
+            "store help prints snapshot prune subcommands")
     (%check (search "diff-registry" output)
             "store help prints query subcommands")
     (%check (search "adapter-history" output)
@@ -820,6 +859,10 @@
             "store help demonstrates per-group sort overrides")
     (%check (search "--license-limit 1 --capability-offset 1" output)
             "store help demonstrates per-group paging overrides")
+    (%check (search "store delete-registry nightly" output)
+            "store help demonstrates deleting a snapshot")
+    (%check (search "store prune-registry 5" output)
+            "store help demonstrates pruning snapshots")
     (%check (search "CL_PY_STORE_DIR" output)
             "store help describes store directory override")
     (%check (search "nightly" output)
@@ -906,6 +949,7 @@
         (%native-http-fetch-text-test)
         (%native-http-fetch-json-test)
         (%native-store-snapshot-test)
+        (%native-store-lifecycle-test)
         (%native-store-query-test)
                                 (%native-concurrency-batch-test)
         (%cli-help-output-test)

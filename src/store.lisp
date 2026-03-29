@@ -88,6 +88,31 @@
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
     (parse-json (uiop:read-file-string path))))
 
+(defun delete-registry-snapshot (snapshot-id &key directory)
+  (let ((path (%registry-snapshot-path snapshot-id directory)))
+    (unless (probe-file path)
+      (%store-error "Registry snapshot was not found: ~A" snapshot-id))
+    (delete-file path)
+    (list :object
+          (cons "deleted" :true)
+          (cons "snapshot-id" snapshot-id)
+          (cons "path" (namestring path)))))
+
+(defun prune-registry-snapshots (keep-count &key directory)
+  (unless (and (integerp keep-count) (>= keep-count 0))
+    (%store-error "Keep count must be a non-negative integer"))
+  (let* ((snapshot-ids (list-registry-snapshots :directory directory))
+         (kept-snapshot-ids (subseq snapshot-ids 0 (min keep-count (length snapshot-ids))))
+         (deleted-snapshot-ids (nthcdr (length kept-snapshot-ids) snapshot-ids)))
+    (dolist (snapshot-id deleted-snapshot-ids)
+      (delete-file (%registry-snapshot-path snapshot-id directory)))
+    (list :object
+          (cons "keep-count" keep-count)
+          (cons "kept-count" (length kept-snapshot-ids))
+          (cons "deleted-count" (length deleted-snapshot-ids))
+          (cons "kept-snapshot-ids" (coerce kept-snapshot-ids 'vector))
+          (cons "deleted-snapshot-ids" (coerce deleted-snapshot-ids 'vector)))))
+
 (defun latest-registry-snapshot-id (&key directory)
   (first (list-registry-snapshots :directory directory)))
 
@@ -275,6 +300,9 @@
 (defun %parse-non-negative-integer (text command-name)
   (let ((value (ignore-errors (parse-integer text :junk-allowed nil))))
     (%validate-report-limit value command-name)))
+
+(defun %parse-keep-count (text command-name)
+  (%parse-non-negative-integer text command-name))
 
 (defun %limit-rows (rows limit)
   (if limit
@@ -857,6 +885,8 @@
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
+  (format t "  store delete-registry <snapshot-id>~%")
+  (format t "  store prune-registry <keep-count>~%")
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
   (format t "  store summarize-registry <snapshot-id>~%")
@@ -874,6 +904,8 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store list-registry~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store show-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store latest-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store summarize-registry nightly~%")
@@ -914,6 +946,12 @@
 (defun %store-cli-list-registry ()
   (dolist (snapshot-id (list-registry-snapshots))
     (format t "~A~%" snapshot-id)))
+
+(defun %store-cli-delete-registry (snapshot-id)
+  (format t "~A~%" (emit-json (delete-registry-snapshot snapshot-id))))
+
+(defun %store-cli-prune-registry (keep-count)
+  (format t "~A~%" (emit-json (prune-registry-snapshots keep-count))))
 
 (defun %store-cli-show-registry (snapshot-id)
   (format t "~A~%" (emit-json (load-registry-snapshot snapshot-id))))
@@ -990,6 +1028,18 @@
           "store list-registry does not accept positional arguments"
           #'%print-store-usage)
          (%store-cli-list-registry)))
+    ((string= (first args) "delete-registry")
+     (if (= (length (rest args)) 1)
+       (%store-cli-delete-registry (second args))
+       (cl-py.internal:signal-cli-usage-error
+        "store delete-registry requires exactly one snapshot id"
+        #'%print-store-usage)))
+    ((string= (first args) "prune-registry")
+     (if (= (length (rest args)) 1)
+       (%store-cli-prune-registry (%parse-keep-count (second args) "store prune-registry"))
+       (cl-py.internal:signal-cli-usage-error
+        "store prune-registry requires exactly one keep count"
+        #'%print-store-usage)))
     ((string= (first args) "show-registry")
      (if (= (length (rest args)) 1)
          (%store-cli-show-registry (second args))

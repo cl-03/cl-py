@@ -29,6 +29,8 @@
    #:save-registry-snapshot
    #:list-registry-snapshots
    #:load-registry-snapshot
+  #:delete-registry-snapshot
+  #:prune-registry-snapshots
    #:latest-registry-snapshot-id
    #:summarize-registry-snapshot
    #:diff-registry-snapshots

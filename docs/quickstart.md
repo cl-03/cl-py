@@ -57,6 +57,8 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store delete-registry nightly
+sbcl --script scripts/dev-cli.lisp store prune-registry 5
 sbcl --script scripts/dev-cli.lisp store latest-registry
 sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
 sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
@@ -128,7 +130,8 @@ summary, snapshot-to-snapshot diffs, adapter history across snapshots, and aggre
 including reports filtered by one or more licenses or capabilities, sorted aggregate rows,
 aggregate report diffs, exclusion filters, group-selected output, row limits, offsets,
 absolute-delta sorting, per-group sort overrides, per-group paging overrides, file export,
-and per-result pagination metadata such as total, returned, and remaining row counts.
+per-result pagination metadata such as total, returned, and remaining row counts, plus lifecycle
+operations for deleting snapshots and pruning older snapshots while keeping the newest N entries.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.
