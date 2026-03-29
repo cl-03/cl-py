@@ -121,6 +121,7 @@ sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability sl
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text --capability validate-instance
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --exclude-capability metadata
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --group capability
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --license-sort count-desc --capability-sort count-asc
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --license-limit 1 --capability-offset 1 --capability-limit 2
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --offset 1 --limit 2
@@ -131,6 +132,7 @@ sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --capability validate-instance
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --exclude-license "MIT"
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --group license
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --license-sort delta-desc --capability-sort name
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --license-limit 1 --capability-limit 2
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc
@@ -153,7 +155,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Use `CL_PY_STORE_DIR` to redirect the store root to another directory
 - Snapshots are written as canonical JSON for easy inspection and reuse
 - The current first slice is intentionally small and focused on registry persistence
-- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, group-selected output, row sorting, row offsets, row limits, per-group paging overrides, absolute-delta sorting, file export, and aggregate report diffs
+- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, group-selected output, row sorting, row offsets, row limits, per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export, and aggregate report diffs
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

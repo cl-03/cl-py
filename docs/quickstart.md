@@ -66,6 +66,7 @@ sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability sl
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text --capability validate-instance
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --exclude-capability metadata
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --group capability
+sbcl --script scripts/dev-cli.lisp store report-registry nightly --license-sort count-desc --capability-sort count-asc
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --license-limit 1 --capability-offset 1 --capability-limit 2
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc
 sbcl --script scripts/dev-cli.lisp store report-registry nightly --sort count-desc --offset 1 --limit 2
@@ -76,6 +77,7 @@ sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --capability validate-instance
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --exclude-license "MIT"
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --group license
+sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --license-sort delta-desc --capability-sort name
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --license-limit 1 --capability-limit 2
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort delta-asc
 sbcl --script scripts/dev-cli.lisp store diff-report-registry baseline nightly --sort abs-delta-desc
@@ -125,8 +127,8 @@ The store layer can also answer simple snapshot queries such as latest snapshot 
 summary, snapshot-to-snapshot diffs, adapter history across snapshots, and aggregate reports,
 including reports filtered by one or more licenses or capabilities, sorted aggregate rows,
 aggregate report diffs, exclusion filters, group-selected output, row limits, offsets,
-absolute-delta sorting, per-group paging overrides, file export, and per-result pagination metadata
-such as total, returned, and remaining row counts.
+absolute-delta sorting, per-group sort overrides, per-group paging overrides, file export,
+and per-result pagination metadata such as total, returned, and remaining row counts.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

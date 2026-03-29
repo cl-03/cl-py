@@ -199,8 +199,8 @@ Current status:
 - The store layer now also supports snapshot queries for latest snapshot lookup, summary output,
   snapshot diffs, adapter history, aggregate reports, filtered aggregate reports,
   exclusion filters, group-selected output, row sorting, row offsets, row limits,
-  per-group paging overrides, absolute-delta sorting, file export, per-result pagination metadata,
-  and aggregate report diffs.
+  per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export,
+  per-result pagination metadata, and aggregate report diffs.
 - This does not replace the broader database-backed roadmap. It reduces risk by establishing local
   persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 

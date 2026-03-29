@@ -358,6 +358,11 @@
               (sorted-report (report-registry-snapshot "baseline"
                                                       :directory directory
                                                       :sort "count-desc"))
+              (group-sorted-report (report-registry-snapshot "baseline"
+                                                             :directory directory
+                                                             :sort "name"
+                                                             :license-sort "count-desc"
+                                                             :capability-sort "count-asc"))
               (limited-report (report-registry-snapshot "baseline"
                                                        :directory directory
                                                        :sort "count-desc"
@@ -392,6 +397,12 @@
                                                                   "nightly"
                                                                   :directory directory
                                                                   :sort "delta-asc"))
+              (group-sorted-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                    "nightly"
+                                                                    :directory directory
+                                                                    :sort "delta-asc"
+                                                                    :license-sort "delta-desc"
+                                                                    :capability-sort "name"))
               (abs-sorted-report-diff (diff-registry-snapshot-reports "baseline"
                                                                       "nightly"
                                                                       :directory directory
@@ -445,6 +456,8 @@
               (excluded-capabilities (%json-object-entry excluded-report "capability-counts"))
               (report-diff-capabilities (%json-object-entry report-diff "capability-count-diff"))
               (sorted-report-capabilities (%json-object-entry sorted-report "capability-counts"))
+              (group-sorted-report-licenses (%json-object-entry group-sorted-report "license-counts"))
+              (group-sorted-report-capabilities (%json-object-entry group-sorted-report "capability-counts"))
               (limited-report-capabilities (%json-object-entry limited-report "capability-counts"))
               (limited-report-license-page (%json-object-entry limited-report "license-counts-page"))
               (limited-report-capability-page (%json-object-entry limited-report "capability-counts-page"))
@@ -455,6 +468,7 @@
               (group-paged-report-capability-page (%json-object-entry group-paged-report "capability-counts-page"))
               (offset-report-capability-page (%json-object-entry offset-report "capability-counts-page"))
               (sorted-report-diff-capabilities (%json-object-entry sorted-report-diff "capability-count-diff"))
+              (group-sorted-report-diff-entries (cdr group-sorted-report-diff))
               (abs-sorted-report-diff-capabilities (%json-object-entry abs-sorted-report-diff "capability-count-diff"))
               (offset-report-diff-capabilities (%json-object-entry offset-report-diff "capability-count-diff"))
               (offset-report-diff-capability-page (%json-object-entry offset-report-diff "capability-count-diff-page"))
@@ -489,6 +503,14 @@
                  "native store report returns the applied sort mode")
          (%check (string= "metadata" (%json-object-entry (aref sorted-report-capabilities 0) "name"))
                  "native store report can sort aggregate rows by descending count")
+         (%check (string= "count-desc" (%json-object-entry group-sorted-report "license-sort"))
+                 "native store report returns the effective per-license sort mode")
+         (%check (string= "count-asc" (%json-object-entry group-sorted-report "capability-sort"))
+                 "native store report returns the effective per-capability sort mode")
+         (%check (string= "MIT" (%json-object-entry (aref group-sorted-report-licenses 0) "name"))
+                 "native store report can override license sorting independently")
+         (%check (string= "normalize-version" (%json-object-entry (aref group-sorted-report-capabilities 0) "name"))
+                 "native store report can override capability sorting independently")
          (%check (= 2 (%json-object-entry limited-report "limit"))
                  "native store report returns the applied row limit")
          (%check (= 2 (length limited-report-capabilities))
@@ -555,6 +577,10 @@
                  "native store report diff returns the applied sort mode")
          (%check (string= "metadata" (%json-object-entry (aref sorted-report-diff-capabilities 0) "name"))
                  "native store report diff can sort rows by ascending delta")
+         (%check (string= "delta-desc" (%json-object-entry group-sorted-report-diff "license-sort"))
+                 "native store report diff returns the effective per-license diff sort mode")
+         (%check (string= "name" (%json-object-entry group-sorted-report-diff "capability-sort"))
+                 "native store report diff returns the effective per-capability diff sort mode")
          (%check (string= "abs-delta-desc" (%json-object-entry abs-sorted-report-diff "sort"))
                  "native store report diff returns the applied abs-delta sort mode")
          (%check (string= "metadata" (%json-object-entry (aref abs-sorted-report-diff-capabilities 0) "name"))
@@ -772,6 +798,10 @@
             "store help prints aggregate group filters")
     (%check (search "--sort" output)
             "store help prints report sort flags")
+    (%check (search "--license-sort" output)
+            "store help prints per-license sort flags")
+    (%check (search "--capability-sort" output)
+            "store help prints per-capability sort flags")
     (%check (search "--offset" output)
             "store help prints report row offsets")
     (%check (search "--limit" output)
@@ -786,6 +816,8 @@
             "store help demonstrates repeated capability filters")
     (%check (search "--group capability" output)
             "store help demonstrates selecting a single aggregate group")
+    (%check (search "--license-sort count-desc --capability-sort count-asc" output)
+            "store help demonstrates per-group sort overrides")
     (%check (search "--license-limit 1 --capability-offset 1" output)
             "store help demonstrates per-group paging overrides")
     (%check (search "CL_PY_STORE_DIR" output)
