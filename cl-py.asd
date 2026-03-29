@@ -9,6 +9,7 @@
                (:file "src/conditions")
                (:file "src/process")
                (:file "src/json")
+               (:file "src/time")
                (:file "src/manifest")
                (:file "src/registry")
                (:file "src/adapter")

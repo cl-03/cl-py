@@ -36,6 +36,8 @@
            (%print-registry))
           ((string= (first args) "json")
            (dispatch-json-command (rest args)))
+          ((string= (first args) "time")
+           (dispatch-time-command (rest args)))
           ((find-adapter (first args))
            (cl-py.internal:dispatch-adapter-command (first args) (rest args)))
           (t

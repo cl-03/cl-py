@@ -5,10 +5,12 @@
                 #:adapter-metadata
                 #:emit-json
                 #:find-adapter
+                #:format-iso-timestamp
                 #:list-adapters
                 #:normalize-json
                 #:normalize-packaging-version
                 #:parse-json
+                #:parse-iso-timestamp
                 #:parse-dateutil-isodatetime
                 #:slugify-text
                 #:validate-jsonschema-instance)
@@ -143,6 +145,31 @@
            (normalize-json "{\"name\":\"cl-py\",\"b\":[true,false,null],\"a\":1}"))
           "native json normalization produces canonical key ordering"))
 
+(defun %native-time-parse-test ()
+        (let ((timestamp (parse-iso-timestamp "2026-03-29T10:20:30Z")))
+                (%check (and (listp timestamp) (eq :timestamp (first timestamp)))
+                                                "native time parser preserves timestamp identity")
+                (%check (= 2026 (getf (rest timestamp) :year))
+                                                "native time parser reads year correctly")
+                (%check (= 0 (getf (rest timestamp) :offset-minutes))
+                                                "native time parser normalizes UTC offset correctly")))
+
+(defun %native-time-offset-test ()
+        (let ((timestamp (parse-iso-timestamp "2026-03-29T10:20:30+05:30")))
+                (%check (= 330 (getf (rest timestamp) :offset-minutes))
+                                                "native time parser preserves positive offsets")
+                (%check (string= "2026-03-29T10:20:30+05:30"
+                                                                                 (format-iso-timestamp timestamp))
+                                                "native time formatter round-trips offset timestamps")))
+
+(defun %native-time-invalid-test ()
+        (handler-case
+                        (progn
+                                (parse-iso-timestamp "2026-02-30T10:20:30Z")
+                                (%check nil "native time parser rejects invalid dates"))
+                (cl-py:adapter-error ()
+                        (%check t "native time parser rejects invalid dates"))))
+
 (defun %optional-packaging-integration-test ()
   (handler-case
       (%check (string= "1.0rc1" (normalize-packaging-version "1.0rc1"))
@@ -191,6 +218,9 @@
         (%native-json-parse-test)
         (%native-json-emit-test)
         (%native-json-normalize-test)
+  (%native-time-parse-test)
+  (%native-time-offset-test)
+  (%native-time-invalid-test)
   (%optional-packaging-integration-test)
   (%optional-dateutil-integration-test)
   (%optional-slugify-integration-test)

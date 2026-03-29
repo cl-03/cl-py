@@ -10,6 +10,7 @@ This repository currently contains:
 - A project constitution and Speckit workflow templates
 - A Common Lisp code skeleton with a manifest-driven adapter registry
 - A native JSON foundation for parse, emit, and normalization workflows
+- A native time normalization layer for ISO-8601 parsing and formatting
 - A development CLI
 - Demonstration adapters for the Python `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema` libraries
 - Python bootstrap scripts and a minimal CI workflow
@@ -48,6 +49,7 @@ cl-py/
 │   ├── conditions.lisp
 │   ├── process.lisp
 │   ├── json.lisp
+│   ├── time.lisp
 │   ├── manifest.lisp
 │   ├── registry.lisp
 │   ├── adapter.lisp
@@ -102,6 +104,8 @@ sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
 sbcl --script scripts/dev-cli.lisp json normalize '{"b":2,"a":1}'
+sbcl --script scripts/dev-cli.lisp time parse-iso 2026-03-29T10:20:30Z
+sbcl --script scripts/dev-cli.lisp time format-iso '(:timestamp :year 2026 :month 3 :day 29 :hour 10 :minute 20 :second 30 :offset-minutes 0)'
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -120,8 +124,8 @@ CL_PY_PYTHON=/path/to/python
 
 For REPL-oriented workflows and ASDF loading examples, see [docs/quickstart.md](docs/quickstart.md).
 
-For shell environments where inline JSON quoting is awkward, the JSON commands also accept `@path`
-to read input from a file, or `-` to read from standard input.
+For shell environments where inline JSON quoting is awkward, the native JSON and time commands
+also accept `@path` to read input from a file, or `-` to read from standard input.
 
 ## Test Runner
 
@@ -144,6 +148,17 @@ Current capabilities:
 - Emit canonical JSON from Common Lisp values
 - Normalize JSON strings into deterministic key-sorted output
 - Accept CLI JSON input from inline text, `@file`, or standard input
+
+## Native Time Normalization
+
+The second native Common Lisp capability slice adds ISO-8601 timestamp parsing and formatting.
+
+Current capabilities:
+
+- Parse timestamps matching `YYYY-MM-DDTHH:MM:SSZ`
+- Parse timestamps matching `YYYY-MM-DDTHH:MM:SS+HH:MM` and `-HH:MM`
+- Format parsed timestamp values back to canonical ISO-8601 strings
+- Reject invalid date and time components in pure Common Lisp
 
 ## First Adapter: packaging
 

@@ -20,6 +20,8 @@
    #:parse-json
    #:emit-json
    #:normalize-json
+   #:parse-iso-timestamp
+   #:format-iso-timestamp
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
      #:slugify-text
