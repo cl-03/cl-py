@@ -216,6 +216,7 @@ Current capabilities:
 - Load a snapshot back into the native JSON data model
 - Delete a saved registry snapshot by id
 - Prune older registry snapshots while keeping the newest N ids
+- Preview delete and prune lifecycle operations with dry-run mode before changing disk state
 - Query the latest, summarized, and diffed view of stored snapshots
 - Query per-adapter history across stored snapshots
 - Build aggregate snapshot reports grouped by license and capability

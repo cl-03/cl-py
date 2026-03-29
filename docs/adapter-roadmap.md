@@ -200,7 +200,8 @@ Current status:
   snapshot diffs, adapter history, aggregate reports, filtered aggregate reports,
   exclusion filters, group-selected output, row sorting, row offsets, row limits,
   per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export,
-  per-result pagination metadata, aggregate report diffs, snapshot deletion, and snapshot pruning.
+  per-result pagination metadata, aggregate report diffs, snapshot deletion, snapshot pruning,
+  and lifecycle dry-run previews.
 - This does not replace the broader database-backed roadmap. It reduces risk by establishing local
   persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 
