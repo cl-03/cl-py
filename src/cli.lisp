@@ -34,6 +34,8 @@
            (cl-py.internal:print-cli-usage))
           ((string= (first args) "registry")
            (%print-registry))
+          ((string= (first args) "json")
+           (dispatch-json-command (rest args)))
           ((find-adapter (first args))
            (cl-py.internal:dispatch-adapter-command (first args) (rest args)))
           (t

@@ -3,9 +3,12 @@
   (:import-from #:cl-py
                 #:adapter-id
                 #:adapter-metadata
+                #:emit-json
                 #:find-adapter
                 #:list-adapters
+                #:normalize-json
                 #:normalize-packaging-version
+                #:parse-json
                 #:parse-dateutil-isodatetime
                 #:slugify-text
                 #:validate-jsonschema-instance)
@@ -110,6 +113,36 @@
     (%check (member "validate-instance" (getf metadata :capabilities) :test #'string=)
             "metadata exposes validate-instance capability")))
 
+(defun %native-json-parse-test ()
+  (let* ((value (parse-json "{\"name\":\"cl-py\",\"active\":true,\"items\":[1,2,null]}") )
+         (entries (cdr value))
+         (items (cdr (assoc "items" entries :test #'string=))))
+    (%check (and (consp value) (eq :object (car value)))
+            "native json parser preserves object identity")
+    (%check (string= "cl-py" (cdr (assoc "name" entries :test #'string=)))
+            "native json parser reads object string fields")
+    (%check (eq :true (cdr (assoc "active" entries :test #'string=)))
+            "native json parser preserves boolean values")
+    (%check (and (vectorp items)
+                 (= 3 (length items))
+                 (eql 1 (aref items 0))
+                 (eq :null (aref items 2)))
+            "native json parser reads nested arrays and null values")))
+
+(defun %native-json-emit-test ()
+  (%check (string=
+           "{\"active\":true,\"items\":[1,2,null],\"name\":\"cl-py\"}"
+           (emit-json '(("name" . "cl-py")
+                        ("active" . :true)
+                        ("items" . #(1 2 :null)))))
+          "native json emitter serializes deterministic canonical objects"))
+
+(defun %native-json-normalize-test ()
+  (%check (string=
+           "{\"a\":1,\"b\":[true,false,null],\"name\":\"cl-py\"}"
+           (normalize-json "{\"name\":\"cl-py\",\"b\":[true,false,null],\"a\":1}"))
+          "native json normalization produces canonical key ordering"))
+
 (defun %optional-packaging-integration-test ()
   (handler-case
       (%check (string= "1.0rc1" (normalize-packaging-version "1.0rc1"))
@@ -155,6 +188,9 @@
   (%dateutil-metadata-test)
   (%slugify-metadata-test)
   (%jsonschema-metadata-test)
+        (%native-json-parse-test)
+        (%native-json-emit-test)
+        (%native-json-normalize-test)
   (%optional-packaging-integration-test)
   (%optional-dateutil-integration-test)
   (%optional-slugify-integration-test)

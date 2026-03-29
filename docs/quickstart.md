@@ -41,6 +41,9 @@ export CL_PY_PYTHON=.venv/bin/python
 
 ```sh
 sbcl --script scripts/dev-cli.lisp registry
+sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
+sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
+sbcl --script scripts/dev-cli.lisp json normalize '{"b":2,"a":1}'
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -48,6 +51,13 @@ sbcl --script scripts/dev-cli.lisp dateutil parse-isodatetime 2026-03-29T10:20:3
 sbcl --script scripts/dev-cli.lisp slugify metadata
 sbcl --script scripts/dev-cli.lisp slugify slugify-text "Hello Common Lisp"
 sbcl --script scripts/dev-cli.lisp jsonschema metadata
+```
+
+On Windows PowerShell or other shells with difficult inline quoting, prefer file-backed input:
+
+```powershell
+Set-Content tmp.json '{"b":2,"a":1}'
+sbcl --script scripts/dev-cli.lisp json normalize @tmp.json
 ```
 
 ## 3. Load with ASDF from the Repository Root
@@ -62,6 +72,9 @@ Start SBCL in the repository root and load the system:
 Then call exported functions directly:
 
 ```lisp
+(cl-py:parse-json "{\"name\":\"cl-py\",\"active\":true}")
+(cl-py:emit-json '(("name" . "cl-py") ("active" . :true)))
+(cl-py:normalize-json "{\"b\":2,\"a\":1}")
 (cl-py:list-adapters)
 (cl-py:adapter-metadata "packaging")
 (cl-py:normalize-packaging-version "1.0rc1")
@@ -109,6 +122,7 @@ best-effort and will be skipped if Python or the required module is unavailable.
 At load time, `cl-py`:
 
 - Loads the core Common Lisp system
+- Loads native JSON helpers for stable internal data handling
 - Reads adapter manifests from `adapters/manifests/`
 - Registers adapters in memory
 - Exposes adapter metadata and user-facing functions through the `cl-py` package

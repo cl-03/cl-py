@@ -9,6 +9,7 @@ This repository currently contains:
 
 - A project constitution and Speckit workflow templates
 - A Common Lisp code skeleton with a manifest-driven adapter registry
+- A native JSON foundation for parse, emit, and normalization workflows
 - A development CLI
 - Demonstration adapters for the Python `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema` libraries
 - Python bootstrap scripts and a minimal CI workflow
@@ -46,6 +47,7 @@ cl-py/
 │   ├── package.lisp
 │   ├── conditions.lisp
 │   ├── process.lisp
+│   ├── json.lisp
 │   ├── manifest.lisp
 │   ├── registry.lisp
 │   ├── adapter.lisp
@@ -97,6 +99,9 @@ Run the development CLI with SBCL:
 
 ```bash
 sbcl --script scripts/dev-cli.lisp registry
+sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
+sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
+sbcl --script scripts/dev-cli.lisp json normalize '{"b":2,"a":1}'
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -115,6 +120,9 @@ CL_PY_PYTHON=/path/to/python
 
 For REPL-oriented workflows and ASDF loading examples, see [docs/quickstart.md](docs/quickstart.md).
 
+For shell environments where inline JSON quoting is awkward, the JSON commands also accept `@path`
+to read input from a file, or `-` to read from standard input.
+
 ## Test Runner
 
 Run the smoke tests with:
@@ -125,6 +133,17 @@ sbcl --script scripts/run-tests.lisp
 
 The smoke suite verifies the registry and CLI surface. Python-backed integration tests are skipped
 automatically if their dependencies are unavailable.
+
+## Native JSON Foundation
+
+The first native Common Lisp capability slice is a JSON foundation that does not depend on Python.
+
+Current capabilities:
+
+- Parse JSON text into JSON-compatible Common Lisp values
+- Emit canonical JSON from Common Lisp values
+- Normalize JSON strings into deterministic key-sorted output
+- Accept CLI JSON input from inline text, `@file`, or standard input
 
 ## First Adapter: packaging
 

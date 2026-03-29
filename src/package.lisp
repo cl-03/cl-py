@@ -17,6 +17,9 @@
    #:find-adapter
    #:adapter-metadata
    #:adapter-module-version
+   #:parse-json
+   #:emit-json
+   #:normalize-json
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
      #:slugify-text
