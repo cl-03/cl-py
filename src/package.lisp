@@ -19,6 +19,7 @@
    #:adapter-module-version
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
+     #:slugify-text
    #:main))
 
 (defpackage #:cl-py.internal
@@ -42,6 +43,8 @@
    #:adapter-summary
    #:register-adapter
         #:load-adapter-manifests
+     #:register-cli-command
+     #:dispatch-adapter-command
    #:call-python-lines
    #:find-adapter-or-die
    #:print-cli-usage

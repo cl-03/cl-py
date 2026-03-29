@@ -76,7 +76,7 @@ For each adapter, add all of the following:
 1. Manifest in `adapters/manifests/`
 2. Python requirement file in `requirements/adapters/`
 3. Common Lisp implementation in `src/adapters/`
-4. CLI exposure if the capability should be user-accessible from the dev CLI
+4. CLI command registration if the capability should be user-accessible from the dev CLI
 5. Smoke coverage or richer contract tests
 
 Suggested checklist:
@@ -112,6 +112,7 @@ Useful commands:
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp dateutil metadata
+sbcl --script scripts/dev-cli.lisp slugify metadata
 sbcl --script scripts/run-tests.lisp
 ```
 

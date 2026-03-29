@@ -10,7 +10,7 @@ This repository currently contains:
 - A project constitution and Speckit workflow templates
 - A Common Lisp code skeleton with a manifest-driven adapter registry
 - A development CLI
-- Demonstration adapters for the Python `packaging` and `python-dateutil` libraries
+- Demonstration adapters for the Python `packaging`, `python-dateutil`, and `python-slugify` libraries
 - Python bootstrap scripts and a minimal CI workflow
 
 The current goal is not to hide Python. The goal is to make Python dependencies consumable from a
@@ -26,11 +26,13 @@ cl-py/
 ├── adapters/
 │   └── manifests/
 │       ├── dateutil.sexp
-│       └── packaging.sexp
+│       ├── packaging.sexp
+│       └── slugify.sexp
 ├── requirements/
 │   └── adapters/
 │       ├── dateutil.txt
-│       └── packaging.txt
+│       ├── packaging.txt
+│       └── slugify.txt
 ├── scripts/
 │   ├── bootstrap-python.ps1
 │   ├── bootstrap-python.sh
@@ -46,7 +48,8 @@ cl-py/
 │   ├── cli.lisp
 │   └── adapters/
 │       ├── dateutil.lisp
-│       └── packaging.lisp
+│       ├── packaging.lisp
+│       └── slugify.lisp
 └── tests/
     └── smoke.lisp
 ```
@@ -57,13 +60,14 @@ cl-py/
 - ASDF available
 - Quicklisp optional but recommended for interactive local development
 - Python 3 available on `PATH` or via `CL_PY_PYTHON`
-- For the current demo adapters: Python packages `packaging` and `python-dateutil`
+- For the current demo adapters: Python packages `packaging`, `python-dateutil`, and `python-slugify`
 
 Install the demo Python dependency with:
 
 ```bash
 python -m pip install packaging
 python -m pip install python-dateutil
+python -m pip install python-slugify
 ```
 
 Or bootstrap the local adapter environment with:
@@ -89,6 +93,8 @@ sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
 sbcl --script scripts/dev-cli.lisp dateutil parse-isodatetime 2026-03-29T10:20:30+00:00
+sbcl --script scripts/dev-cli.lisp slugify metadata
+sbcl --script scripts/dev-cli.lisp slugify slugify-text "Hello Common Lisp"
 ```
 
 If Python is not on `PATH`, set:
@@ -136,6 +142,17 @@ Current capabilities:
 - Discover installed upstream distribution version
 - Parse ISO datetime strings through `dateutil.parser.isoparse`
 
+## Third Adapter: python-slugify
+
+The third adapter targets `python-slugify` because it is a compact but realistic example of text
+normalization that many Common Lisp applications need for URLs, identifiers, or content pipelines.
+
+Current capabilities:
+
+- Discover adapter metadata
+- Discover installed upstream distribution version
+- Convert text to a URL-friendly slug via `slugify.slugify`
+
 ## Adapter Manifests
 
 Adapter discovery is now manifest-driven. Each adapter gets a manifest in
@@ -150,6 +167,9 @@ Adapter discovery is now manifest-driven. Each adapter gets a manifest in
 - Upstream project URL
 
 The Common Lisp registry loads these manifests at system startup.
+
+CLI dispatch is now generic: every adapter gets built-in `metadata` and `version` commands, while
+adapter-specific commands are registered from the adapter implementation layer.
 
 ## CI
 

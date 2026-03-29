@@ -13,4 +13,5 @@
                (:file "src/adapter")
                (:file "src/adapters/packaging")
                (:file "src/adapters/dateutil")
+               (:file "src/adapters/slugify")
                (:file "src/cli")))

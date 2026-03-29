@@ -8,6 +8,7 @@
     (format t "  upstream-url: ~A~%" (adapter-upstream-url adapter))
     (format t "  license: ~A~%" (adapter-license adapter))
     (format t "  module: ~A~%" (adapter-python-module adapter))
+    (format t "  distribution: ~A~%" (adapter-python-distribution adapter))
     (format t "  python-requirement: ~A~%" (adapter-python-requirement adapter))
     (format t "  capabilities: ~{~A~^, ~}~%" (adapter-capabilities adapter))
     (format t "  summary: ~A~%" (cl-py.internal:adapter-summary adapter))))
@@ -25,34 +26,6 @@
     (format t "capabilities: ~{~A~^, ~}~%" (getf metadata :capabilities))
     (format t "summary: ~A~%" (getf metadata :summary))))
 
-(defun %dispatch-packaging (rest)
-  (cond
-    ((null rest)
-     (cl-py.internal:print-cli-usage))
-    ((string= (first rest) "metadata")
-      (%print-adapter-metadata "packaging"))
-    ((string= (first rest) "version")
-     (format t "~A~%" (adapter-module-version "packaging")))
-    ((and (string= (first rest) "normalize-version")
-          (second rest))
-     (format t "~A~%" (normalize-packaging-version (second rest))))
-        (t
-      (cl-py.internal:print-cli-usage))))
-
-    (defun %dispatch-dateutil (rest)
-      (cond
-        ((null rest)
-      (cl-py.internal:print-cli-usage))
-        ((string= (first rest) "metadata")
-      (%print-adapter-metadata "dateutil"))
-        ((string= (first rest) "version")
-      (format t "~A~%" (adapter-module-version "dateutil")))
-        ((and (string= (first rest) "parse-isodatetime")
-        (second rest))
-      (format t "~A~%" (parse-dateutil-isodatetime (second rest))))
-    (t
-     (cl-py.internal:print-cli-usage))))
-
 (defun main ()
   (handler-case
       (let ((args (uiop:command-line-arguments)))
@@ -61,10 +34,8 @@
            (cl-py.internal:print-cli-usage))
           ((string= (first args) "registry")
            (%print-registry))
-          ((string= (first args) "packaging")
-           (%dispatch-packaging (rest args)))
-          ((string= (first args) "dateutil")
-           (%dispatch-dateutil (rest args)))
+          ((find-adapter (first args))
+           (cl-py.internal:dispatch-adapter-command (first args) (rest args)))
           (t
            (cl-py.internal:print-cli-usage))))
     (adapter-error (condition)
