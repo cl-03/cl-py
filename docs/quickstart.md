@@ -60,6 +60,7 @@ sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp store latest-registry
 sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
 sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
+sbcl --script scripts/dev-cli.lisp store adapter-history slugify
 sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
@@ -99,7 +100,7 @@ Registry snapshots are stored under `.cl-py-store/registry/` by default. Set `CL
 before running the CLI if you want to keep snapshots in another directory.
 
 The store layer can also answer simple snapshot queries such as latest snapshot id, per-snapshot
-summary, and snapshot-to-snapshot diffs.
+summary, snapshot-to-snapshot diffs, and adapter history across snapshots.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

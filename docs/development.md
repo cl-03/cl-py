@@ -115,6 +115,7 @@ sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp store latest-registry
 sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
 sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
+sbcl --script scripts/dev-cli.lisp store adapter-history slugify
 sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -130,7 +131,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Use `CL_PY_STORE_DIR` to redirect the store root to another directory
 - Snapshots are written as canonical JSON for easy inspection and reuse
 - The current first slice is intentionally small and focused on registry persistence
-- Query helpers now cover latest snapshot lookup, summary output, and snapshot diffs
+- Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, and adapter history
 
 ## Native Concurrency Runner
 

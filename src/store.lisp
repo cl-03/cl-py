@@ -106,6 +106,14 @@
           do (setf (gethash (%snapshot-adapter-id adapter) table) adapter))
     table))
 
+(defun %snapshot-created-at (snapshot)
+  (%snapshot-entry snapshot "created-at"))
+
+(defun %find-snapshot-adapter (snapshot adapter-id)
+  (find adapter-id (%snapshot-adapters snapshot)
+        :key #'%snapshot-adapter-id
+        :test #'string=))
+
 (defun summarize-registry-snapshot (snapshot-id &key directory)
   (let* ((snapshot (load-registry-snapshot snapshot-id :directory directory))
          (adapters (%snapshot-adapters snapshot))
@@ -147,13 +155,31 @@
           (cons "removed-adapter-ids" (coerce removed 'vector))
           (cons "changed-adapter-ids" (coerce (nreverse changed) 'vector)))))
 
+        (defun registry-adapter-history (adapter-id &key directory)
+          (coerce
+           (loop for snapshot-id in (reverse (list-registry-snapshots :directory directory))
+             for snapshot = (load-registry-snapshot snapshot-id :directory directory)
+             for adapter = (%find-snapshot-adapter snapshot adapter-id)
+             collect (append
+              (list :object
+                (cons "snapshot-id" snapshot-id)
+                (cons "created-at" (%snapshot-created-at snapshot))
+                (cons "present" (if adapter :true :false)))
+              (when adapter
+                (list (cons "name" (cdr (assoc "name" (cdr adapter) :test #'string=)))
+                  (cons "license" (cdr (assoc "license" (cdr adapter) :test #'string=)))
+                  (cons "python-requirement" (cdr (assoc "python-requirement" (cdr adapter) :test #'string=)))
+                  (cons "summary" (cdr (assoc "summary" (cdr adapter) :test #'string=)))))))
+           'vector))
+
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
   (format t "  store summarize-registry <snapshot-id>~%")
-  (format t "  store diff-registry <left-snapshot-id> <right-snapshot-id>~%"))
+          (format t "  store diff-registry <left-snapshot-id> <right-snapshot-id>~%")
+          (format t "  store adapter-history <adapter-id>~%"))
 
 (defun %print-store-help ()
   (%print-store-usage)
@@ -167,7 +193,8 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store show-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store latest-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store summarize-registry nightly~%")
-  (format t "  sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly~%"))
+  (format t "  sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store adapter-history slugify~%"))
 
 (defun %store-cli-snapshot-registry (args)
   (if (> (length args) 1)
@@ -194,6 +221,9 @@
 
 (defun %store-cli-diff-registry (left-snapshot-id right-snapshot-id)
   (format t "~A~%" (emit-json (diff-registry-snapshots left-snapshot-id right-snapshot-id))))
+
+(defun %store-cli-adapter-history (adapter-id)
+  (format t "~A~%" (emit-json (registry-adapter-history adapter-id))))
 
 (defun dispatch-store-command (args)
   (cond
@@ -232,6 +262,12 @@
        (%store-cli-diff-registry (second args) (third args))
        (cl-py.internal:signal-cli-usage-error
         "store diff-registry requires exactly two snapshot ids"
+        #'%print-store-usage)))
+    ((string= (first args) "adapter-history")
+     (if (= (length (rest args)) 1)
+       (%store-cli-adapter-history (second args))
+       (cl-py.internal:signal-cli-usage-error
+        "store adapter-history requires exactly one adapter id"
         #'%print-store-usage)))
     (t
      (cl-py.internal:signal-cli-usage-error

@@ -32,6 +32,7 @@
    #:latest-registry-snapshot-id
    #:summarize-registry-snapshot
    #:diff-registry-snapshots
+   #:registry-adapter-history
    #:run-bounded-task-batch
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
