@@ -29,6 +29,10 @@
    #:save-registry-snapshot
    #:list-registry-snapshots
    #:load-registry-snapshot
+   #:latest-registry-snapshot-id
+   #:summarize-registry-snapshot
+   #:diff-registry-snapshots
+   #:run-bounded-task-batch
    #:normalize-packaging-version
      #:parse-dateutil-isodatetime
      #:slugify-text

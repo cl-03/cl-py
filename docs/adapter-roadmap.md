@@ -26,7 +26,7 @@ The current shortlist uses five filters:
 - A curated Common Lisp ecosystem catalog that identifies credible native libraries for HTTP, URI
   handling, HTML generation, database access, JSON, concurrency, CLI work, and time handling
 - Native Common Lisp capability slices for JSON, time normalization, URI/HTTP work, CLI ergonomics,
-  and local registry snapshot persistence
+  local registry snapshot persistence, and bounded task execution
 
 The roadmap below shifts new feature work toward native Common Lisp modules while keeping the
 existing adapter discipline available for explicit exception cases.
@@ -51,9 +51,8 @@ existing adapter discipline available for explicit exception cases.
 5. Data and query layer
 6. Concurrency utilities
 
-The current repository has now completed a lightweight first persistence slice through a native
-registry snapshot store. The next recommended work is concurrency utilities for bounded parallel
-catalog refresh and validation jobs.
+The current repository has now completed a first concurrency slice through a native bounded task
+runner. The next recommended work is the broader data/query layer beyond snapshot storage.
 
 This order is intentional:
 
@@ -197,6 +196,8 @@ Current status:
 
 - A lightweight native persistence slice now exists for registry snapshots through the `store`
   command group and matching Lisp API.
+- The store layer now also supports snapshot queries for latest snapshot lookup, summary output,
+  and snapshot diffs.
 - This does not replace the broader database-backed roadmap. It reduces risk by establishing local
   persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 
@@ -218,6 +219,13 @@ Phase 2 candidates:
 
 - Cancellation and timeout support
 - Actor-style refresh workers if the simpler task-runner model proves insufficient
+
+Current status:
+
+- A lightweight native bounded task runner now exists through `run-bounded-task-batch` and the
+  `jobs` CLI group.
+- The first slice preserves ordered results, enforces a concurrency cap, and captures per-task
+  failures without aborting the full batch.
 
 ## Cross-Cutting Work
 

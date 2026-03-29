@@ -12,7 +12,9 @@
                 #:fetch-text
                 #:find-adapter
                 #:format-iso-timestamp
+                #:diff-registry-snapshots
                 #:load-registry-snapshot
+                #:latest-registry-snapshot-id
                 #:list-adapters
                 #:list-registry-snapshots
                 #:normalize-uri
@@ -21,8 +23,10 @@
                 #:parse-json
                 #:parse-iso-timestamp
                 #:parse-dateutil-isodatetime
+                #:run-bounded-task-batch
                 #:save-registry-snapshot
                 #:slugify-text
+                #:summarize-registry-snapshot
                 #:validate-jsonschema-instance)
   (:export #:run-tests))
 
@@ -295,6 +299,90 @@
        (%check (and (vectorp adapters) (plusp (length adapters)))
                "native store loads adapter snapshot payloads")))))
 
+(defun %native-store-query-test ()
+  (%with-temporary-store-directory
+   (lambda (directory)
+     (let* ((baseline-path (save-registry-snapshot :directory directory :snapshot-id "baseline"))
+            (nightly-path (save-registry-snapshot :directory directory :snapshot-id "nightly"))
+            (baseline (load-registry-snapshot "baseline" :directory directory))
+            (entries (cdr baseline)))
+       (declare (ignore baseline-path nightly-path))
+       (with-open-file (stream (%snapshot-path-for-test directory "nightly")
+                               :direction :output
+                               :if-exists :supersede
+                               :if-does-not-exist :create)
+         (write-string
+          (emit-json
+           (list :object
+                 (cons "snapshot-id" "nightly")
+                 (cons "created-at" (cdr (assoc "created-at" entries :test #'string=)))
+                 (cons "adapter-count" 3)
+                 (cons "adapters"
+                       (coerce (subseq (coerce (cdr (assoc "adapters" entries :test #'string=)) 'list) 0 3)
+                               'vector))))
+          stream)
+         (terpri stream))
+       (let* ((latest (latest-registry-snapshot-id :directory directory))
+              (summary (summarize-registry-snapshot "baseline" :directory directory))
+              (diff (diff-registry-snapshots "baseline" "nightly" :directory directory))
+              (summary-entries (cdr summary))
+              (diff-entries (cdr diff)))
+         (%check (string= "nightly" latest)
+                 "native store queries return the latest snapshot id")
+         (%check (vectorp (cdr (assoc "adapter-ids" summary-entries :test #'string=)))
+                 "native store summary returns adapter id vectors")
+         (%check (= 1 (length (cdr (assoc "removed-adapter-ids" diff-entries :test #'string=))))
+                 "native store diff reports removed adapters between snapshots"))))))
+
+(defun %snapshot-path-for-test (directory snapshot-id)
+  (merge-pathnames (format nil "registry/~A.json" snapshot-id)
+                   (uiop:ensure-directory-pathname directory)))
+
+#+sbcl
+(defun %native-concurrency-batch-test ()
+  (let ((active-count 0)
+        (max-active-count 0)
+        (mutex (sb-thread:make-mutex :name "cl-py-concurrency-test")))
+    (labels ((enter-task ()
+               (sb-thread:with-mutex (mutex)
+                 (incf active-count)
+                 (setf max-active-count (max max-active-count active-count))))
+             (leave-task ()
+               (sb-thread:with-mutex (mutex)
+                 (decf active-count)))
+             (make-task (delay value &key fail)
+               (lambda ()
+                 (enter-task)
+                 (unwind-protect
+                      (progn
+                        (sleep delay)
+                        (if fail
+                            (error "intentional concurrency failure")
+                            value))
+                   (leave-task)))))
+      (let ((results (run-bounded-task-batch
+                      (list (make-task 0.05 "alpha")
+                            (make-task 0.02 "bravo")
+                            (make-task 0.01 "charlie" :fail t)
+                            (make-task 0.03 "delta"))
+                      :max-concurrency 2)))
+        (%check (= 4 (length results))
+                "native concurrency returns one result per task")
+        (%check (string= "alpha" (getf (first results) :value))
+                "native concurrency preserves ordered success results")
+        (%check (string= "error" (getf (third results) :status))
+                "native concurrency preserves per-task failures")
+        (%check (search "intentional concurrency failure" (getf (third results) :message))
+                "native concurrency records failure messages")
+        (%check (> max-active-count 1)
+                "native concurrency runs more than one task in parallel on SBCL")
+        (%check (<= max-active-count 2)
+                "native concurrency respects the max-concurrency bound")))))
+
+#-sbcl
+(defun %native-concurrency-batch-test ()
+  (format t "SKIP native concurrency tests require SBCL threads~%"))
+
 (defun %cli-help-output-test ()
   (let ((output (%capture-output #'cl-py.internal:print-cli-usage)))
     (%check (search "help [command]" output)
@@ -303,6 +391,8 @@
             "cli usage explains how to get detailed command help")
     (%check (search "json <subcommand>" output)
             "cli usage includes registered native top-level commands")
+    (%check (search "jobs <subcommand>" output)
+            "cli usage includes the jobs command group")
     (%check (search "store <subcommand>" output)
             "cli usage includes the store command group")
     (%check (search "Adapter Command Groups:" output)
@@ -347,10 +437,22 @@
                                    (cl-py.internal:print-command-help "store")))))
     (%check (search "snapshot-registry" output)
             "store help prints store subcommands")
+    (%check (search "diff-registry" output)
+            "store help prints query subcommands")
     (%check (search "CL_PY_STORE_DIR" output)
             "store help describes store directory override")
     (%check (search "nightly" output)
             "store help includes snapshot examples")))
+
+(defun %cli-jobs-help-test ()
+  (let ((output (%capture-output (lambda ()
+                                   (cl-py.internal:print-command-help "jobs")))))
+    (%check (search "demo-batch" output)
+            "jobs help prints jobs subcommands")
+    (%check (search "ordered" output)
+            "jobs help explains ordered results")
+    (%check (search "demo-batch 2" output)
+            "jobs help includes concurrency examples")))
 
 (defun %cli-registry-help-test ()
   (let ((output (%capture-output (lambda ()
@@ -423,10 +525,13 @@
         (%native-http-fetch-text-test)
         (%native-http-fetch-json-test)
         (%native-store-snapshot-test)
+        (%native-store-query-test)
+                                (%native-concurrency-batch-test)
         (%cli-help-output-test)
         (%cli-usage-error-test)
         (%cli-command-help-test)
         (%cli-http-help-test)
+                                (%cli-jobs-help-test)
         (%cli-store-help-test)
           (%cli-registry-help-test)
           (%cli-adapter-help-test)

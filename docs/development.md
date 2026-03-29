@@ -112,6 +112,10 @@ Useful commands:
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store latest-registry
+sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
+sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
+sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp dateutil metadata
 sbcl --script scripts/dev-cli.lisp slugify metadata
@@ -126,6 +130,15 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Use `CL_PY_STORE_DIR` to redirect the store root to another directory
 - Snapshots are written as canonical JSON for easy inspection and reuse
 - The current first slice is intentionally small and focused on registry persistence
+- Query helpers now cover latest snapshot lookup, summary output, and snapshot diffs
+
+## Native Concurrency Runner
+
+The current concurrency slice is intentionally narrow.
+
+- Use `run-bounded-task-batch` for reusable bounded parallel work in Common Lisp
+- Use `jobs demo-batch` to exercise the runner from the CLI
+- Task failures are returned as structured results so the whole batch remains inspectable
 
 ## CI Expectations
 

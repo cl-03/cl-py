@@ -45,6 +45,7 @@ sbcl --script scripts/dev-cli.lisp help http
 sbcl --script scripts/dev-cli.lisp help registry
 sbcl --script scripts/dev-cli.lisp help packaging
 sbcl --script scripts/dev-cli.lisp help store
+sbcl --script scripts/dev-cli.lisp help jobs
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
@@ -56,6 +57,10 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store latest-registry
+sbcl --script scripts/dev-cli.lisp store summarize-registry nightly
+sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly
+sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -92,6 +97,12 @@ examples, which is useful on shells where quoting rules vary.
 
 Registry snapshots are stored under `.cl-py-store/registry/` by default. Set `CL_PY_STORE_DIR`
 before running the CLI if you want to keep snapshots in another directory.
+
+The store layer can also answer simple snapshot queries such as latest snapshot id, per-snapshot
+summary, and snapshot-to-snapshot diffs.
+
+The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
+native bounded task runner.
 
 ## 3. Load with ASDF from the Repository Root
 

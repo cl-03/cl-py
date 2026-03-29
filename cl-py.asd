@@ -15,6 +15,7 @@
                (:file "src/time")
                (:file "src/uri-http")
                (:file "src/store")
+               (:file "src/concurrency")
                (:file "src/adapters/packaging")
                (:file "src/adapters/dateutil")
                (:file "src/adapters/slugify")

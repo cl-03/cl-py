@@ -13,6 +13,7 @@ This repository currently contains:
 - A native time normalization layer for ISO-8601 parsing and formatting
 - A native URI normalization and HTTP text/JSON fetch layer
 - A native registry snapshot store for optional local persistence
+- A native bounded task runner for structured concurrent job execution
 - A development CLI
 - Demonstration adapters for the Python `packaging`, `python-dateutil`, `python-slugify`, and `jsonschema` libraries
 - Python bootstrap scripts and a minimal CI workflow
@@ -108,6 +109,7 @@ sbcl --script scripts/dev-cli.lisp help json
 sbcl --script scripts/dev-cli.lisp help registry
 sbcl --script scripts/dev-cli.lisp help packaging
 sbcl --script scripts/dev-cli.lisp help store
+sbcl --script scripts/dev-cli.lisp help jobs
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp json parse '{"name":"cl-py","active":true}'
 sbcl --script scripts/dev-cli.lisp json emit '(("name" . "cl-py") ("active" . :true))'
@@ -119,6 +121,7 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
 sbcl --script scripts/dev-cli.lisp dateutil metadata
@@ -147,7 +150,7 @@ Global help now lists adapter commands by adapter group, and `help <command>` wo
 native command groups such as `json` and adapter groups such as `packaging`.
 
 Native command help also includes input-form guidance and runnable examples, so `help json`,
-`help time`, `help uri`, `help http`, and `help store` can be used as command-local reference pages.
+`help time`, `help uri`, `help http`, `help store`, and `help jobs` can be used as command-local reference pages.
 
 The native store layer persists registry snapshots under `.cl-py-store/registry/` by default.
 Set `CL_PY_STORE_DIR` to redirect snapshot storage elsewhere.
@@ -211,7 +214,20 @@ Current capabilities:
 - Save the current adapter registry as a canonical JSON snapshot
 - List saved registry snapshots from local storage
 - Load a snapshot back into the native JSON data model
+- Query the latest, summarized, and diffed view of stored snapshots
 - Redirect snapshot storage with `CL_PY_STORE_DIR`
+
+## Native Concurrency Utilities
+
+The fifth native Common Lisp capability slice adds a bounded task runner for structured concurrent
+work.
+
+Current capabilities:
+
+- Run a list of zero-argument task functions with a max-concurrency bound
+- Preserve input order in the returned result list
+- Capture per-task failures as structured results instead of aborting the full batch
+- Demonstrate the runner through the `jobs demo-batch` CLI command
 
 ## First Adapter: packaging
 
