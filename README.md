@@ -224,6 +224,7 @@ Current capabilities:
 - Sort aggregate report rows by count and diff rows by delta
 - Exclude licenses or capabilities from report and diff-report queries
 - Limit report and diff-report result rows after sorting
+- Override license and capability paging independently when both groups are returned
 - Sort diff-report rows by absolute delta magnitude
 - Page sorted report rows with offsets before applying limits
 - Return per-result pagination metadata for aggregate and diff rows

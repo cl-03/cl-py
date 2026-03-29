@@ -367,6 +367,12 @@
                                                       :sort "count-desc"
                                                       :offset 1
                                                       :limit 2))
+              (group-paged-report (report-registry-snapshot "baseline"
+                                                            :directory directory
+                                                            :sort "count-desc"
+                                                            :license-limit 1
+                                                            :capability-offset 1
+                                                            :capability-limit 2))
               (filtered-report (report-registry-snapshot "baseline"
                                                          :directory directory
                                                          :capability "slugify-text"))
@@ -396,6 +402,11 @@
                                                                   :sort "abs-delta-desc"
                                                                   :offset 1
                                                                   :limit 1))
+              (group-paged-report-diff (diff-registry-snapshot-reports "baseline"
+                                                                     "nightly"
+                                                                     :directory directory
+                                                                     :license-limit 1
+                                                                     :capability-limit 2))
               (limited-report-diff (diff-registry-snapshot-reports "baseline"
                                                                    "nightly"
                                                                    :directory directory
@@ -438,11 +449,19 @@
               (limited-report-license-page (%json-object-entry limited-report "license-counts-page"))
               (limited-report-capability-page (%json-object-entry limited-report "capability-counts-page"))
               (offset-report-capabilities (%json-object-entry offset-report "capability-counts"))
+              (group-paged-report-licenses (%json-object-entry group-paged-report "license-counts"))
+              (group-paged-report-capabilities (%json-object-entry group-paged-report "capability-counts"))
+              (group-paged-report-license-page (%json-object-entry group-paged-report "license-counts-page"))
+              (group-paged-report-capability-page (%json-object-entry group-paged-report "capability-counts-page"))
               (offset-report-capability-page (%json-object-entry offset-report "capability-counts-page"))
               (sorted-report-diff-capabilities (%json-object-entry sorted-report-diff "capability-count-diff"))
               (abs-sorted-report-diff-capabilities (%json-object-entry abs-sorted-report-diff "capability-count-diff"))
               (offset-report-diff-capabilities (%json-object-entry offset-report-diff "capability-count-diff"))
               (offset-report-diff-capability-page (%json-object-entry offset-report-diff "capability-count-diff-page"))
+              (group-paged-report-diff-licenses (%json-object-entry group-paged-report-diff "license-count-diff"))
+              (group-paged-report-diff-capabilities (%json-object-entry group-paged-report-diff "capability-count-diff"))
+              (group-paged-report-diff-license-page (%json-object-entry group-paged-report-diff "license-count-diff-page"))
+              (group-paged-report-diff-capability-page (%json-object-entry group-paged-report-diff "capability-count-diff-page"))
               (limited-report-diff-capabilities (%json-object-entry limited-report-diff "capability-count-diff"))
               (limited-report-diff-capability-page (%json-object-entry limited-report-diff "capability-count-diff-page"))
               (filtered-report-diff-capabilities (%json-object-entry filtered-report-diff "capability-count-diff"))
@@ -489,6 +508,16 @@
                        (%json-object-entry offset-report-capability-page "returned-count")
                        (%json-object-entry offset-report-capability-page "remaining-count")))
                  "native store report pagination metadata accounts for offsets")
+         (%check (= 1 (%json-object-entry group-paged-report-license-page "limit"))
+                 "native store report can override license row limits independently")
+         (%check (= 1 (length group-paged-report-licenses))
+                 "native store report applies the license-specific row limit")
+         (%check (= 1 (%json-object-entry group-paged-report-capability-page "offset"))
+                 "native store report can override capability row offsets independently")
+         (%check (= 2 (%json-object-entry group-paged-report-capability-page "limit"))
+                 "native store report can override capability row limits independently")
+         (%check (= 2 (length group-paged-report-capabilities))
+                 "native store report applies capability-specific paging")
          (%check (= 1 (%json-object-entry filtered-report "adapter-count"))
                  "native store report can filter adapters by capability")
          (%check (string= "license" (%json-object-entry license-only-report "group"))
@@ -540,6 +569,14 @@
                  "native store report diff can limit rows after sorting")
          (%check (= 1 (%json-object-entry limited-report-diff-capability-page "returned-count"))
                  "native store report diff includes pagination metadata for diff rows")
+         (%check (= 1 (%json-object-entry group-paged-report-diff-license-page "limit"))
+                 "native store report diff can override license diff limits independently")
+         (%check (= 1 (length group-paged-report-diff-licenses))
+                 "native store report diff applies the license-specific diff limit")
+         (%check (= 2 (%json-object-entry group-paged-report-diff-capability-page "limit"))
+                 "native store report diff can override capability diff limits independently")
+         (%check (= 2 (length group-paged-report-diff-capabilities))
+                 "native store report diff applies capability-specific diff limits")
          (%check (string= "license" (%json-object-entry license-only-report-diff "group"))
                  "native store report diff can select a single aggregate group")
          (%check (and (vectorp license-only-report-diff-licenses)
@@ -739,12 +776,18 @@
             "store help prints report row offsets")
     (%check (search "--limit" output)
             "store help prints report row limits")
+    (%check (search "--license-limit" output)
+            "store help prints per-license row limits")
+    (%check (search "--capability-offset" output)
+            "store help prints per-capability row offsets")
     (%check (search "--output" output)
             "store help prints report output paths")
     (%check (search "--capability slugify-text --capability validate-instance" output)
             "store help demonstrates repeated capability filters")
     (%check (search "--group capability" output)
             "store help demonstrates selecting a single aggregate group")
+    (%check (search "--license-limit 1 --capability-offset 1" output)
+            "store help demonstrates per-group paging overrides")
     (%check (search "CL_PY_STORE_DIR" output)
             "store help describes store directory override")
     (%check (search "nightly" output)
