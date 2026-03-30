@@ -61,6 +61,7 @@ sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry --created-before 2026-03-30T00:00:00Z --dry-run
+sbcl --script scripts/dev-cli.lisp store delete-registry --created-after 2026-03-29T12:00:00Z --created-before 2026-03-31T00:00:00Z --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run
@@ -146,6 +147,7 @@ executed in a single command.
 It also accepts repeated `--prefix <text>` selectors to target matching snapshot ids without
 spelling out each id explicitly.
 Use `--created-before <ISO-8601>` to target snapshots older than a specific creation timestamp.
+Combine `--created-after` with `--created-before` to target snapshots within a bounded time window.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.
