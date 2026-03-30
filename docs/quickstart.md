@@ -174,6 +174,13 @@ sbcl --script scripts/dev-cli.lisp store delete-registry nightly-20260329 --pref
 	"after-count": 7,
 	"would-after-count": 4,
 	"deleted-count": 3,
+	"summary": {
+		"affected-count": 3,
+		"before-count": 7,
+		"after-count": 7,
+		"would-after-count": 4,
+		"deleted-count": 3
+	},
 	"snapshot-ids": [
 		"nightly-20260329",
 		"nightly-20260330",
@@ -227,6 +234,15 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 	"before-count": 7,
 	"after-count": 7,
 	"would-after-count": 2,
+	"summary": {
+		"affected-count": 5,
+		"before-count": 7,
+		"after-count": 7,
+		"would-after-count": 2,
+		"keep-count": 2,
+		"kept-count": 2,
+		"deleted-count": 5
+	},
 	"audit": {
 		"operation": "prune-registry",
 		"mode": "dry-run",

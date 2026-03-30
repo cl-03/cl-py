@@ -174,8 +174,8 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Delete responses now also include selector match breakdowns so callers can distinguish explicit, prefix, and time-window matches in preview and execution flows
 - Those selector breakdowns also include per-source count fields so callers can consume match totals without re-counting JSON arrays
 - Mixed selector requests also return a deduplicated `total-matched-count`, so callers can distinguish overall cleanup impact from per-source overlap
-- See [docs/quickstart.md](docs/quickstart.md) for a concrete mixed-selector dry-run JSON example that shows `matched`, per-source counts, and the deduplicated total together
-- The same quickstart document now also includes a concrete `store prune-registry ... --dry-run` JSON example showing projected counts plus kept/deleted snapshot ids
+- See [docs/quickstart.md](docs/quickstart.md) for a concrete mixed-selector dry-run JSON example that shows `matched`, per-source counts, the deduplicated total, and the shared summary impact fields together
+- The same quickstart document now also includes a concrete `store prune-registry ... --dry-run` JSON example showing projected counts, `summary.affected-count`, and the kept/deleted snapshot ids
 - The quickstart guide now also contains a dedicated lifecycle response field reference covering shared delete/prune fields plus delete-only and prune-only payload members
 - Prune responses now also expose a structured `summary` object so callers can consume keep/delete and before/after counts from one stable sub-object
 - Delete responses now also expose a structured `summary` object so callers can consume delete impact totals from one stable sub-object alongside `matched`
