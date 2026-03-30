@@ -218,33 +218,52 @@
         (cons "after-count" (%object-field summary "after-count"))
         (cons "would-after-count" (%object-field summary "would-after-count"))))
 
+(defun %summary-derived-fields (summary field-names)
+  (mapcar (lambda (field-name)
+            (cons field-name (%object-field summary field-name)))
+          field-names))
+
 (defun %lifecycle-delete-legacy-fields (summary)
   (append (%lifecycle-legacy-count-fields summary)
-          (list (cons "deleted-count" (%object-field summary "deleted-count")))))
+          (%summary-derived-fields summary '("deleted-count"))))
 
 (defun %lifecycle-prune-legacy-fields (summary)
   (append (%lifecycle-legacy-count-fields summary)
-          (list (cons "keep-count" (%object-field summary "keep-count"))
-                (cons "kept-count" (%object-field summary "kept-count"))
-                (cons "deleted-count" (%object-field summary "deleted-count")))))
+          (%summary-derived-fields summary '("keep-count" "kept-count" "deleted-count"))))
+
+(defun %lifecycle-prune-partition-fields (matched)
+  (list (cons "kept-count" (%object-field matched "kept-count"))
+        (cons "deleted-count" (%object-field matched "deleted-count"))
+        (cons "kept-snapshot-ids" (%object-field matched "kept-snapshot-ids"))
+        (cons "deleted-snapshot-ids" (%object-field matched "deleted-snapshot-ids"))))
+
+(defun %lifecycle-prune-summary-extra-fields (keep-count kept-snapshot-ids deleted-snapshot-ids)
+  (list (cons "keep-count" keep-count)
+        (cons "kept-count" (length kept-snapshot-ids))
+        (cons "deleted-count" (length deleted-snapshot-ids))))
+
+(defun %lifecycle-delete-summary-extra-fields (deleted-snapshot-ids)
+  (list (cons "deleted-count" (length deleted-snapshot-ids))))
 
 (defun %lifecycle-prune-legacy-id-fields (matched)
-  (list (cons "kept-snapshot-ids" (%object-field matched "kept-snapshot-ids"))
-        (cons "deleted-snapshot-ids" (%object-field matched "deleted-snapshot-ids"))))
+  (rest (rest (%lifecycle-prune-partition-fields matched))))
 
 (defun %lifecycle-prune-audit-fields (matched)
   (let ((match-request (%lifecycle-match-request matched)))
-    (list (cons "keep-count" (%object-field match-request "keep-count"))
-          (cons "kept-count" (%object-field matched "kept-count"))
-          (cons "deleted-count" (%object-field matched "deleted-count"))
-          (cons "kept-snapshot-ids" (%object-field matched "kept-snapshot-ids"))
-          (cons "deleted-snapshot-ids" (%object-field matched "deleted-snapshot-ids")))))
+    (append (list (cons "keep-count" (%object-field match-request "keep-count")))
+            (%lifecycle-prune-partition-fields matched))))
+
+(defun %lifecycle-base-fields (dry-run force)
+  (list (cons "dry-run" (if dry-run :true :false))
+        (cons "forced" (if (and force (not dry-run)) :true :false))))
 
 (defun %lifecycle-delete-base-fields (dry-run force)
-  (list (cons "deleted" (if dry-run :false :true))
-        (cons "dry-run" (if dry-run :true :false))
-        (cons "forced" (if (and force (not dry-run)) :true :false))
-        (cons "would-delete" (if dry-run :true :false))))
+  (append (list (cons "deleted" (if dry-run :false :true)))
+          (%lifecycle-base-fields dry-run force)
+          (list (cons "would-delete" (if dry-run :true :false)))))
+
+(defun %lifecycle-prune-base-fields (dry-run force)
+  (%lifecycle-base-fields dry-run force))
 
 (defun %lifecycle-delete-audit-subject-fields (snapshot-ids &key snapshot-id path)
   (append (list (cons "snapshot-count" (length snapshot-ids))
@@ -339,7 +358,7 @@
                    after-count
                    would-after-count
                    :affected-snapshot-ids (list snapshot-id)
-                   :extra-fields (list (cons "deleted-count" 1)))))
+                   :extra-fields (%lifecycle-delete-summary-extra-fields (list snapshot-id)))))
     (%ensure-delete-confirmation dry-run force)
     (unless (probe-file path)
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
@@ -388,7 +407,7 @@
                    after-count
                    would-after-count
                    :affected-snapshot-ids resolved-snapshot-ids
-                   :extra-fields (list (cons "deleted-count" (length resolved-snapshot-ids))))))
+                   :extra-fields (%lifecycle-delete-summary-extra-fields resolved-snapshot-ids))))
     (unless dry-run
       (dolist (path resolved-pathnames)
         (delete-file path)))
@@ -426,15 +445,15 @@
                    after-count
                    would-after-count
                    :affected-snapshot-ids deleted-snapshot-ids
-                   :extra-fields (list (cons "keep-count" keep-count)
-                                       (cons "kept-count" (length kept-snapshot-ids))
-                                       (cons "deleted-count" (length deleted-snapshot-ids))))))
+                   :extra-fields (%lifecycle-prune-summary-extra-fields
+                                  keep-count
+                                  kept-snapshot-ids
+                                  deleted-snapshot-ids))))
     (unless dry-run
       (dolist (snapshot-id deleted-snapshot-ids)
         (delete-file (%registry-snapshot-path snapshot-id directory))))
     (%lifecycle-prune-response-object
-     (list (cons "dry-run" (if dry-run :true :false))
-           (cons "forced" (if (and force (not dry-run)) :true :false)))
+     (%lifecycle-prune-base-fields dry-run force)
      summary
      matched
      (apply #'%store-lifecycle-audit-object
