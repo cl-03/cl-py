@@ -157,7 +157,7 @@ Set `CL_PY_STORE_DIR` to redirect snapshot storage elsewhere.
 
 For lifecycle cleanup responses, the recommended stable contract is now the structured `summary`,
 `matched` including `matched.request`, and `audit` sub-objects; mirrored top-level count and
-selector fields remain available as compatibility aliases.
+selector fields remain available only as compatibility aliases.
 
 ## Test Runner
 

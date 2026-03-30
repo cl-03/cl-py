@@ -183,7 +183,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Delete and prune summaries now both expose shared `affected-count` and `affected-snapshot-ids` fields so automation can read lifecycle impact totals and ordered removal targets through one common shape
 - In implementation terms, lifecycle `summary` is now the canonical source for count data, while mirrored top-level count fields are kept as compatibility aliases for existing callers
 - The quickstart guide now also defines an explicit lifecycle stability policy: new automation should prefer `summary`, `matched`, and `audit`, while top-level count aliases are compatibility fields
-- Delete responses now also expose `matched.request` so selector input metadata has a structured canonical home, while top-level selector aliases remain for compatibility
+- Delete responses now also expose `matched.request` so selector input metadata has a structured canonical home, while top-level selector aliases are documented as compatibility aliases rather than preferred fields
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

@@ -320,7 +320,7 @@ Compatibility fields retained for existing callers:
 
 - top-level `before-count`, `after-count`, and `would-after-count`
 - top-level delete `deleted-count`
-- top-level delete `prefixes`, `created-before`, and `created-after`
+- top-level delete `prefixes`, `created-before`, and `created-after` as compatibility aliases for `matched.request.*`
 - top-level prune `keep-count`, `kept-count`, and `deleted-count`
 
 Current compatibility policy:
@@ -344,11 +344,11 @@ Delete-specific fields returned by `store delete-registry`:
 - `matched.request.prefix-count`: count of repeated `--prefix` selector inputs
 - `matched.request.created-before`: echoed upper timestamp bound from the caller or `null`
 - `matched.request.created-after`: echoed lower timestamp bound from the caller or `null`
-- `deleted-count`: number of unique snapshots selected for deletion
+- `deleted-count`: compatibility alias for `summary.deleted-count`
 - `snapshot-ids`: deduplicated snapshot ids that would be removed or were removed
-- `prefixes`: repeated `--prefix` selectors echoed back in normalized order
-- `created-before`: echoed upper timestamp bound or `null`
-- `created-after`: echoed lower timestamp bound or `null`
+- `prefixes`: compatibility alias for `matched.request.prefixes`
+- `created-before`: compatibility alias for `matched.request.created-before`
+- `created-after`: compatibility alias for `matched.request.created-after`
 - `matched.explicit-snapshot-ids`: snapshot ids matched directly from positional arguments
 - `matched.explicit-count`: count of explicit id matches
 - `matched.prefix-snapshot-ids`: snapshot ids matched through `--prefix`
