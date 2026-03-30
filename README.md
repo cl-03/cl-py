@@ -155,6 +155,10 @@ Native command help also includes input-form guidance and runnable examples, so 
 The native store layer persists registry snapshots under `.cl-py-store/registry/` by default.
 Set `CL_PY_STORE_DIR` to redirect snapshot storage elsewhere.
 
+For lifecycle cleanup responses, the recommended stable contract is now the structured `summary`,
+`matched`, and `audit` sub-objects; mirrored top-level count fields remain available as
+compatibility aliases.
+
 ## Test Runner
 
 Run the smoke tests with:

@@ -307,6 +307,26 @@ Shared lifecycle fields returned by both `store delete-registry` and `store prun
 For new automation, prefer `summary.*` as the canonical source for lifecycle counts and affected-id lists.
 The mirrored top-level count fields remain available for compatibility with existing callers.
 
+## Lifecycle Stability Guidance
+
+Recommended fields for new automation:
+
+- `summary.*` for lifecycle impact counts and affected snapshot ids
+- `matched.*` for delete selector provenance and deduplicated selector totals
+- `audit.*` for logging, mode detection, and execution timestamps
+
+Compatibility fields retained for existing callers:
+
+- top-level `before-count`, `after-count`, and `would-after-count`
+- top-level delete `deleted-count`
+- top-level prune `keep-count`, `kept-count`, and `deleted-count`
+
+Current compatibility policy:
+
+- new lifecycle metadata should land in structured sub-objects first
+- mirrored top-level count fields may remain for compatibility, but they should match the canonical `summary` values
+- callers that need long-term stability should treat `summary`, `matched`, and `audit` as the primary contract surface
+
 Delete-specific fields returned by `store delete-registry`:
 
 - `deleted`: `true` only when snapshot files were actually removed
