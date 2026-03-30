@@ -176,6 +176,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Mixed selector requests also return a deduplicated `total-matched-count`, so callers can distinguish overall cleanup impact from per-source overlap
 - See [docs/quickstart.md](docs/quickstart.md) for a concrete mixed-selector dry-run JSON example that shows `matched`, per-source counts, and the deduplicated total together
 - The same quickstart document now also includes a concrete `store prune-registry ... --dry-run` JSON example showing projected counts plus kept/deleted snapshot ids
+- The quickstart guide now also contains a dedicated lifecycle response field reference covering shared delete/prune fields plus delete-only and prune-only payload members
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

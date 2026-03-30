@@ -254,6 +254,45 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 This response shape is useful when automation needs both the projected post-prune size
 (`would-after-count`) and the exact snapshot ids that would be kept or removed.
 
+## Lifecycle Response Fields
+
+Shared lifecycle fields returned by both `store delete-registry` and `store prune-registry`:
+
+- `dry-run`: `true` when the command is a preview and does not remove files
+- `forced`: `true` when the destructive operation was explicitly executed with `--force`
+- `before-count`: current number of snapshots before the lifecycle operation is applied
+- `after-count`: actual number of snapshots after the call returns; in preview mode this stays equal to `before-count`
+- `would-after-count`: projected number of snapshots after the destructive operation would complete
+- `audit.operation`: lifecycle operation name such as `delete-registry` or `prune-registry`
+- `audit.mode`: `dry-run` or `force`
+- `audit.executed-at`: ISO-8601 timestamp for when the lifecycle response was produced
+- `audit.store-root`: resolved store root used by the command
+
+Delete-specific fields returned by `store delete-registry`:
+
+- `deleted`: `true` only when snapshot files were actually removed
+- `would-delete`: `true` during preview mode to indicate the request resolved at least one deletion target
+- `deleted-count`: number of unique snapshots selected for deletion
+- `snapshot-ids`: deduplicated snapshot ids that would be removed or were removed
+- `prefixes`: repeated `--prefix` selectors echoed back in normalized order
+- `created-before`: echoed upper timestamp bound or `null`
+- `created-after`: echoed lower timestamp bound or `null`
+- `matched.explicit-snapshot-ids`: snapshot ids matched directly from positional arguments
+- `matched.explicit-count`: count of explicit id matches
+- `matched.prefix-snapshot-ids`: snapshot ids matched through `--prefix`
+- `matched.prefix-count`: count of prefix-based matches
+- `matched.created-window-snapshot-ids`: snapshot ids matched through `--created-after` and/or `--created-before`
+- `matched.created-window-count`: count of time-window matches
+- `matched.total-matched-count`: deduplicated total across all selector sources
+
+Prune-specific fields returned by `store prune-registry`:
+
+- `keep-count`: requested number of newest snapshots to retain
+- `kept-count`: number of snapshots that remain after pruning or would remain after execution
+- `deleted-count`: number of snapshots removed or scheduled for removal by the prune plan
+- `kept-snapshot-ids`: newest snapshot ids retained by the prune plan
+- `deleted-snapshot-ids`: older snapshot ids removed or scheduled for removal by the prune plan
+
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.
 
