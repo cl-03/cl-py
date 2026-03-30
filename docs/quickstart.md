@@ -154,6 +154,7 @@ Delete responses also expose a `matched` object so scripts can distinguish expli
 prefix matches, and time-window matches.
 That object now also includes `explicit-count`, `prefix-count`, and `created-window-count`
 for callers that only need per-source totals.
+It also includes `total-matched-count`, which is deduplicated across all selector sources.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

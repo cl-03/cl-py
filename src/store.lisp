@@ -152,14 +152,20 @@
 (defun %lifecycle-match-object (explicit-snapshot-ids prefix-snapshot-ids created-window-snapshot-ids)
   (let* ((resolved-explicit-snapshot-ids (%normalize-filter-values explicit-snapshot-ids))
          (resolved-prefix-snapshot-ids (%normalize-filter-values prefix-snapshot-ids))
-         (resolved-created-window-snapshot-ids (%normalize-filter-values created-window-snapshot-ids)))
+         (resolved-created-window-snapshot-ids (%normalize-filter-values created-window-snapshot-ids))
+         (resolved-total-matched-snapshot-ids
+           (%normalize-filter-values
+            (append resolved-explicit-snapshot-ids
+                    resolved-prefix-snapshot-ids
+                    resolved-created-window-snapshot-ids))))
     (list :object
           (cons "explicit-snapshot-ids" (coerce resolved-explicit-snapshot-ids 'vector))
           (cons "explicit-count" (length resolved-explicit-snapshot-ids))
           (cons "prefix-snapshot-ids" (coerce resolved-prefix-snapshot-ids 'vector))
           (cons "prefix-count" (length resolved-prefix-snapshot-ids))
           (cons "created-window-snapshot-ids" (coerce resolved-created-window-snapshot-ids 'vector))
-          (cons "created-window-count" (length resolved-created-window-snapshot-ids)))))
+          (cons "created-window-count" (length resolved-created-window-snapshot-ids))
+          (cons "total-matched-count" (length resolved-total-matched-snapshot-ids)))))
 
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
