@@ -212,6 +212,48 @@ In that example, `1 + 3 + 1 != total-matched-count` because the same snapshot ca
 more than one selector source. `total-matched-count` reflects the deduplicated set that would
 actually be affected by the delete request.
 
+Example dry-run response for a prune request such as:
+
+```sh
+sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
+```
+
+```json
+{
+	"dry-run": true,
+	"forced": false,
+	"before-count": 7,
+	"after-count": 7,
+	"would-after-count": 2,
+	"audit": {
+		"operation": "prune-registry",
+		"mode": "dry-run",
+		"executed-at": "2026-03-30T11:47:02Z",
+		"store-root": ".cl-py-store",
+		"keep-count": 2,
+		"kept-count": 2,
+		"deleted-count": 5
+	},
+	"keep-count": 2,
+	"kept-count": 2,
+	"deleted-count": 5,
+	"kept-snapshot-ids": [
+		"nightly-20260331",
+		"nightly-20260330"
+	],
+	"deleted-snapshot-ids": [
+		"nightly-20260329",
+		"nightly-20260328",
+		"nightly-20260327",
+		"nightly-20260326",
+		"nightly-20260325"
+	]
+}
+```
+
+This response shape is useful when automation needs both the projected post-prune size
+(`would-after-count`) and the exact snapshot ids that would be kept or removed.
+
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.
 
