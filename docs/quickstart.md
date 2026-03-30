@@ -176,6 +176,11 @@ sbcl --script scripts/dev-cli.lisp store delete-registry nightly-20260329 --pref
 	"deleted-count": 3,
 	"summary": {
 		"affected-count": 3,
+		"affected-snapshot-ids": [
+			"nightly-20260329",
+			"nightly-20260330",
+			"nightly-20260330-hotfix"
+		],
 		"before-count": 7,
 		"after-count": 7,
 		"would-after-count": 4,
@@ -236,6 +241,13 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 	"would-after-count": 2,
 	"summary": {
 		"affected-count": 5,
+		"affected-snapshot-ids": [
+			"nightly-20260329",
+			"nightly-20260328",
+			"nightly-20260327",
+			"nightly-20260326",
+			"nightly-20260325"
+		],
 		"before-count": 7,
 		"after-count": 7,
 		"would-after-count": 2,
@@ -290,12 +302,14 @@ Shared lifecycle fields returned by both `store delete-registry` and `store prun
 - `audit.executed-at`: ISO-8601 timestamp for when the lifecycle response was produced
 - `audit.store-root`: resolved store root used by the command
 - `summary.affected-count`: number of snapshots materially affected by the lifecycle plan; for delete and prune this is the number of snapshots selected for removal
+- `summary.affected-snapshot-ids`: ordered snapshot ids materially affected by the lifecycle plan; for delete and prune this is the ordered removal set
 
 Delete-specific fields returned by `store delete-registry`:
 
 - `deleted`: `true` only when snapshot files were actually removed
 - `would-delete`: `true` during preview mode to indicate the request resolved at least one deletion target
 - `summary.deleted-count`: number of unique snapshots selected for deletion
+- `summary.affected-snapshot-ids`: deduplicated snapshot ids selected for deletion in execution order
 - `summary.before-count`: current snapshot total before deletion
 - `summary.after-count`: actual snapshot total after the call returns
 - `summary.would-after-count`: projected snapshot total after the delete plan completes
@@ -315,6 +329,7 @@ Delete-specific fields returned by `store delete-registry`:
 Prune-specific fields returned by `store prune-registry`:
 
 - `summary.keep-count`: requested number of newest snapshots to retain
+- `summary.affected-snapshot-ids`: older snapshot ids selected for removal by the prune plan
 - `summary.kept-count`: number of snapshots retained by the prune plan
 - `summary.deleted-count`: number of snapshots removed or scheduled for removal
 - `summary.before-count`: current snapshot total before pruning

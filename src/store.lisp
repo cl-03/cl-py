@@ -167,13 +167,17 @@
           (cons "created-window-count" (length resolved-created-window-snapshot-ids))
           (cons "total-matched-count" (length resolved-total-matched-snapshot-ids)))))
 
-(defun %lifecycle-summary-object (affected-count before-count after-count would-after-count &rest fields)
+(defun %stable-unique-values (values)
+  (remove-duplicates (remove nil (copy-list values)) :test #'string= :from-end t))
+
+(defun %lifecycle-summary-object (affected-count before-count after-count would-after-count &key affected-snapshot-ids extra-fields)
   (append (list :object
                 (cons "affected-count" affected-count)
+                (cons "affected-snapshot-ids" (coerce (%stable-unique-values affected-snapshot-ids) 'vector))
                 (cons "before-count" before-count)
                 (cons "after-count" after-count)
                 (cons "would-after-count" would-after-count))
-          fields))
+          extra-fields))
 
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
@@ -214,7 +218,8 @@
              before-count
              after-count
              would-after-count
-             (cons "deleted-count" 1)))
+             :affected-snapshot-ids (list snapshot-id)
+             :extra-fields (list (cons "deleted-count" 1))))
           (cons "matched"
                 (%lifecycle-match-object (list snapshot-id) nil nil))
           (cons "audit"
@@ -258,7 +263,8 @@
              before-count
              after-count
              would-after-count
-             (cons "deleted-count" (length resolved-snapshot-ids))))
+             :affected-snapshot-ids resolved-snapshot-ids
+             :extra-fields (list (cons "deleted-count" (length resolved-snapshot-ids)))))
           (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
            (cons "prefixes" (coerce resolved-prefixes 'vector))
            (cons "created-before" (or created-before :null))
@@ -307,9 +313,10 @@
                  before-count
                  after-count
                  would-after-count
-                 (cons "keep-count" keep-count)
-                 (cons "kept-count" (length kept-snapshot-ids))
-                 (cons "deleted-count" (length deleted-snapshot-ids))))
+                 :affected-snapshot-ids deleted-snapshot-ids
+                 :extra-fields (list (cons "keep-count" keep-count)
+                                     (cons "kept-count" (length kept-snapshot-ids))
+                                     (cons "deleted-count" (length deleted-snapshot-ids)))))
           (cons "audit"
             (%store-lifecycle-audit-object
              "prune-registry"

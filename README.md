@@ -225,6 +225,7 @@ Current capabilities:
 - Report a structured prune summary object for lifecycle cleanup automation
 - Report a structured delete summary object for lifecycle cleanup automation
 - Unify delete and prune lifecycle summaries around a shared `affected-count` field
+- Unify delete and prune lifecycle summaries around shared `affected-count` and `affected-snapshot-ids` fields
 - Prune older registry snapshots while keeping the newest N ids with explicit force confirmation
 - Preview delete and prune lifecycle operations with dry-run mode before changing disk state
 - Emit structured lifecycle audit metadata for delete and prune operations
