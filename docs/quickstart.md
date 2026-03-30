@@ -153,7 +153,7 @@ so scripts can compare actual and projected snapshot totals directly.
 Delete responses also expose a `matched` object so scripts can distinguish explicit id matches,
 prefix matches, and time-window matches.
 They also expose a `summary` object that groups `deleted-count`, `before-count`,
-`after-count`, and `would-after-count` into one stable sub-object.
+`after-count`, `would-after-count`, and a shared `affected-count` into one stable sub-object.
 That object now also includes `explicit-count`, `prefix-count`, and `created-window-count`
 for callers that only need per-source totals.
 It also includes `total-matched-count`, which is deduplicated across all selector sources.
@@ -256,7 +256,8 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 This response shape is useful when automation needs both the projected post-prune size
 (`would-after-count`) and the exact snapshot ids that would be kept or removed.
 Prune responses also expose a `summary` object that groups `keep-count`, `kept-count`,
-`deleted-count`, `before-count`, `after-count`, and `would-after-count` into one stable
+`deleted-count`, `before-count`, `after-count`, `would-after-count`, and a shared
+`affected-count` into one stable
 sub-object for script consumers.
 
 ## Lifecycle Response Fields
@@ -272,6 +273,7 @@ Shared lifecycle fields returned by both `store delete-registry` and `store prun
 - `audit.mode`: `dry-run` or `force`
 - `audit.executed-at`: ISO-8601 timestamp for when the lifecycle response was produced
 - `audit.store-root`: resolved store root used by the command
+- `summary.affected-count`: number of snapshots materially affected by the lifecycle plan; for delete and prune this is the number of snapshots selected for removal
 
 Delete-specific fields returned by `store delete-registry`:
 
