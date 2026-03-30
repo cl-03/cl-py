@@ -95,12 +95,12 @@
       "force"))
 
 (defun %store-lifecycle-audit-object (operation directory dry-run force &rest fields)
-  (list :object
-        (cons "operation" operation)
-        (cons "mode" (%store-lifecycle-mode dry-run force))
-        (cons "executed-at" (%snapshot-timestamp-string))
-        (cons "store-root" (namestring (%store-root directory)))
-        (cons "fields" (list :object fields))))
+  (append (list :object
+                (cons "operation" operation)
+                (cons "mode" (%store-lifecycle-mode dry-run force))
+                (cons "executed-at" (%snapshot-timestamp-string))
+                (cons "store-root" (namestring (%store-root directory))))
+          fields))
 
 (defun %ensure-delete-confirmation (dry-run force)
   (unless (or dry-run force)
@@ -213,6 +213,14 @@
         (cons "created-before" (%object-field match-request "created-before"))
         (cons "created-after" (%object-field match-request "created-after"))))
 
+(defun %lifecycle-delete-selector-audit-fields (match-request)
+  (list (cons "explicit-snapshot-ids" (%object-field match-request "explicit-snapshot-ids"))
+        (cons "explicit-count" (%object-field match-request "explicit-count"))
+        (cons "prefixes" (%object-field match-request "prefixes"))
+        (cons "prefix-count" (%object-field match-request "prefix-count"))
+        (cons "created-before" (%object-field match-request "created-before"))
+        (cons "created-after" (%object-field match-request "created-after"))))
+
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
           (%normalize-filter-values
@@ -258,13 +266,14 @@
                  (append (%lifecycle-match-object (list snapshot-id) nil nil)
                  (list (cons "request" match-request))))
            (cons "audit"
-             (%store-lifecycle-audit-object
-          "delete-registry"
-          directory
-          dry-run
-          force
-          (cons "snapshot-id" snapshot-id)
-          (cons "path" (namestring path))))
+           (apply #'%store-lifecycle-audit-object
+              "delete-registry"
+              directory
+              dry-run
+              force
+              (append (list (cons "snapshot-id" snapshot-id)
+                    (cons "path" (namestring path)))
+                  (%lifecycle-delete-selector-audit-fields match-request))))
            (cons "snapshot-id" snapshot-id)
            (cons "path" (namestring path))))))
 
@@ -309,16 +318,14 @@
              (list (cons "request" match-request))))
            (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
            (cons "audit"
-                 (%store-lifecycle-audit-object
-                  "delete-registry"
-                  directory
-                  dry-run
-                  force
-                  (cons "snapshot-count" (length resolved-snapshot-ids))
-                  (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
-                  (cons "prefixes" (coerce resolved-prefixes 'vector))
-                  (cons "created-before" (or created-before :null))
-                  (cons "created-after" (or created-after :null))))))))
+                 (apply #'%store-lifecycle-audit-object
+                "delete-registry"
+                directory
+                dry-run
+                force
+                (append (list (cons "snapshot-count" (length resolved-snapshot-ids))
+                      (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector)))
+                    (%lifecycle-delete-selector-audit-fields match-request))))))))
 
 (defun prune-registry-snapshots (keep-count &key directory dry-run force)
   (unless (and (integerp keep-count) (>= keep-count 0))

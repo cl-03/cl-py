@@ -314,7 +314,7 @@ Recommended fields for new automation:
 - `summary.*` for lifecycle impact counts and affected snapshot ids
 - `matched.request.*` for delete request selector inputs
 - `matched.*` for delete selector provenance and deduplicated selector totals
-- `audit.*` for logging, mode detection, and execution timestamps
+- `audit.*` for logging, mode detection, execution timestamps, and normalized selector request context
 
 Compatibility fields retained for existing callers:
 
@@ -344,6 +344,7 @@ Delete-specific fields returned by `store delete-registry`:
 - `matched.request.prefix-count`: count of repeated `--prefix` selector inputs
 - `matched.request.created-before`: echoed upper timestamp bound from the caller or `null`
 - `matched.request.created-after`: echoed lower timestamp bound from the caller or `null`
+- `audit.explicit-snapshot-ids` / `audit.explicit-count` / `audit.prefixes` / `audit.prefix-count` / `audit.created-before` / `audit.created-after`: normalized selector request context echoed for audit/logging consumers
 - `deleted-count`: compatibility alias for `summary.deleted-count`
 - `snapshot-ids`: deduplicated snapshot ids that would be removed or were removed
 - `prefixes`: compatibility alias for `matched.request.prefixes`
