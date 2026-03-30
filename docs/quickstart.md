@@ -255,6 +255,24 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 		"kept-count": 2,
 		"deleted-count": 5
 	},
+	"matched": {
+		"kept-snapshot-ids": [
+			"nightly-20260331",
+			"nightly-20260330"
+		],
+		"kept-count": 2,
+		"deleted-snapshot-ids": [
+			"nightly-20260329",
+			"nightly-20260328",
+			"nightly-20260327",
+			"nightly-20260326",
+			"nightly-20260325"
+		],
+		"deleted-count": 5,
+		"request": {
+			"keep-count": 2
+		}
+	},
 	"audit": {
 		"operation": "prune-registry",
 		"mode": "dry-run",
@@ -285,8 +303,9 @@ This response shape is useful when automation needs both the projected post-prun
 (`would-after-count`) and the exact snapshot ids that would be kept or removed.
 Prune responses also expose a `summary` object that groups `keep-count`, `kept-count`,
 `deleted-count`, `before-count`, `after-count`, `would-after-count`, and a shared
-`affected-count` into one stable
-sub-object for script consumers.
+`affected-count` into one stable sub-object for script consumers. They also expose a
+structured `matched` object so callers can distinguish the requested retention target from the
+resolved keep/delete partition.
 
 ## Lifecycle Response Fields
 
@@ -312,8 +331,8 @@ The mirrored top-level count fields remain available for compatibility with exis
 Recommended fields for new automation:
 
 - `summary.*` for lifecycle impact counts and affected snapshot ids
-- `matched.request.*` for delete request selector inputs
-- `matched.*` for delete selector provenance and deduplicated selector totals
+- `matched.request.*` for normalized lifecycle request inputs such as delete selectors or prune keep-count
+- `matched.*` for resolved lifecycle selection provenance and partitions
 - `audit.*` for logging, mode detection, execution timestamps, and normalized selector request context
 
 Compatibility fields retained for existing callers:
@@ -357,6 +376,19 @@ Delete-specific fields returned by `store delete-registry`:
 - `matched.created-window-snapshot-ids`: snapshot ids matched through `--created-after` and/or `--created-before`
 - `matched.created-window-count`: count of time-window matches
 - `matched.total-matched-count`: deduplicated total across all selector sources
+
+Prune-specific fields returned by `store prune-registry`:
+
+- `matched.request.keep-count`: requested retention count supplied by the caller
+- `matched.kept-snapshot-ids`: ordered snapshot ids retained by the prune plan
+- `matched.kept-count`: number of snapshots retained by the prune plan
+- `matched.deleted-snapshot-ids`: ordered snapshot ids removed or previewed for removal by the prune plan
+- `matched.deleted-count`: number of snapshots removed or previewed for removal by the prune plan
+- `keep-count`: compatibility alias for `summary.keep-count`
+- `kept-count`: compatibility alias for `summary.kept-count`
+- `deleted-count`: compatibility alias for `summary.deleted-count`
+- `kept-snapshot-ids`: compatibility snapshot-id list for retained snapshots
+- `deleted-snapshot-ids`: compatibility snapshot-id list for removed or previewed snapshots
 
 Prune-specific fields returned by `store prune-registry`:
 

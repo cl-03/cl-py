@@ -178,6 +178,19 @@
               (cons "created-before" (or created-before :null))
               (cons "created-after" (or created-after :null)))))
 
+(defun %lifecycle-prune-request-object (keep-count)
+  (list :object
+        (cons "keep-count" keep-count)))
+
+(defun %lifecycle-prune-match-object (kept-snapshot-ids deleted-snapshot-ids)
+  (let ((resolved-kept-snapshot-ids (%normalize-filter-values kept-snapshot-ids))
+        (resolved-deleted-snapshot-ids (%normalize-filter-values deleted-snapshot-ids)))
+    (list :object
+          (cons "kept-snapshot-ids" (coerce resolved-kept-snapshot-ids 'vector))
+          (cons "kept-count" (length resolved-kept-snapshot-ids))
+          (cons "deleted-snapshot-ids" (coerce resolved-deleted-snapshot-ids 'vector))
+          (cons "deleted-count" (length resolved-deleted-snapshot-ids)))))
+
 (defun %stable-unique-values (values)
   (remove-duplicates (remove nil (copy-list values)) :test #'string= :from-end t))
 
@@ -338,6 +351,7 @@
          (deleted-snapshot-ids (nthcdr (length kept-snapshot-ids) snapshot-ids))
          (would-after-count (length kept-snapshot-ids))
          (after-count (if dry-run before-count would-after-count))
+         (match-request (%lifecycle-prune-request-object keep-count))
          (summary (%lifecycle-summary-object
                    (length deleted-snapshot-ids)
                    before-count
@@ -356,6 +370,9 @@
            (cons "forced" (if (and force (not dry-run)) :true :false)))
      (%lifecycle-prune-legacy-fields summary)
      (list (cons "summary" summary)
+           (cons "matched"
+             (append (%lifecycle-prune-match-object kept-snapshot-ids deleted-snapshot-ids)
+             (list (cons "request" match-request))))
            (cons "audit"
                  (%store-lifecycle-audit-object
                   "prune-registry"
