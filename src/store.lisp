@@ -106,10 +106,25 @@
   (unless (or dry-run force)
     (%store-error "Deleting a registry snapshot requires :force t or :dry-run t")))
 
-(defun %resolve-registry-snapshot-paths (snapshot-ids directory)
-  (let ((resolved-snapshot-ids (%normalize-filter-values snapshot-ids)))
+(defun %snapshot-id-prefix-p (prefix snapshot-id)
+  (let ((prefix-length (length prefix)))
+    (and (<= prefix-length (length snapshot-id))
+         (string= prefix snapshot-id :end1 prefix-length :end2 prefix-length))))
+
+(defun %snapshot-ids-matching-prefixes (prefixes directory)
+  (let ((normalized-prefixes (%normalize-filter-values prefixes)))
+    (loop for snapshot-id in (list-registry-snapshots :directory directory)
+          when (loop for prefix in normalized-prefixes
+                     thereis (%snapshot-id-prefix-p prefix snapshot-id))
+          collect snapshot-id)))
+
+(defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes)
+  (let ((resolved-snapshot-ids
+          (%normalize-filter-values
+           (append snapshot-ids
+                   (%snapshot-ids-matching-prefixes prefixes directory)))))
     (unless resolved-snapshot-ids
-      (%store-error "At least one registry snapshot id is required"))
+      (%store-error "At least one registry snapshot id or matching --prefix selector is required"))
     (mapcar (lambda (snapshot-id)
               (let ((path (%registry-snapshot-path snapshot-id directory)))
                 (unless (probe-file path)
@@ -140,9 +155,10 @@
           (cons "snapshot-id" snapshot-id)
           (cons "path" (namestring path)))))
 
-(defun delete-registry-snapshots (snapshot-ids &key directory dry-run force)
+(defun delete-registry-snapshots (snapshot-ids &key directory dry-run force prefixes)
   (%ensure-delete-confirmation dry-run force)
-  (let* ((resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory))
+  (let* ((resolved-prefixes (%normalize-filter-values prefixes))
+         (resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory :prefixes resolved-prefixes))
          (resolved-snapshot-ids (mapcar #'car resolved-paths))
          (resolved-pathnames (mapcar #'cdr resolved-paths)))
     (unless dry-run
@@ -155,6 +171,7 @@
           (cons "would-delete" (if dry-run :true :false))
           (cons "deleted-count" (length resolved-snapshot-ids))
           (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
+             (cons "prefixes" (coerce resolved-prefixes 'vector))
           (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
           (cons "audit"
                 (%store-lifecycle-audit-object
@@ -163,7 +180,8 @@
                  dry-run
                  force
                  (cons "snapshot-count" (length resolved-snapshot-ids))
-                 (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector)))))))
+               (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
+               (cons "prefixes" (coerce resolved-prefixes 'vector)))))))
 
 (defun prune-registry-snapshots (keep-count &key directory dry-run force)
   (unless (and (integerp keep-count) (>= keep-count 0))
@@ -387,6 +405,7 @@
 
 (defun %parse-store-delete-registry-args (args)
   (let ((snapshot-ids nil)
+    (prefixes nil)
         (dry-run nil)
         (force nil))
     (loop while args
@@ -396,11 +415,17 @@
                 (setf dry-run t))
                ((string= argument "--force")
                 (setf force t))
+              ((string= argument "--prefix")
+               (unless args
+                (cl-py.internal:signal-cli-usage-error
+                 "store delete-registry requires a value after --prefix"
+                 #'%print-store-usage))
+               (push (pop args) prefixes))
               (t
                (push argument snapshot-ids))))
-       (unless snapshot-ids
+       (unless (or snapshot-ids prefixes)
       (cl-py.internal:signal-cli-usage-error
-         "store delete-registry requires at least one snapshot id"
+         "store delete-registry requires at least one snapshot id or --prefix selector"
        #'%print-store-usage))
     (when (and dry-run force)
       (cl-py.internal:signal-cli-usage-error
@@ -410,7 +435,10 @@
       (cl-py.internal:signal-cli-usage-error
        "store delete-registry requires --dry-run or --force"
        #'%print-store-usage))
-       (values (nreverse snapshot-ids) dry-run force)))
+       (values (nreverse snapshot-ids)
+            (%normalize-filter-values (nreverse prefixes))
+            dry-run
+            force)))
 
 (defun %parse-store-prune-registry-args (args)
   (let ((keep-count nil)
@@ -1024,7 +1052,7 @@
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
-  (format t "  store delete-registry <snapshot-id> [<snapshot-id> ...] (--dry-run | --force)~%")
+  (format t "  store delete-registry <snapshot-id> [<snapshot-id> ...] [--prefix <text> ...] (--dry-run | --force)~%")
   (format t "  store prune-registry <keep-count> (--dry-run | --force)~%")
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
@@ -1045,6 +1073,7 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store list-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run~%")
@@ -1090,13 +1119,14 @@
     (format t "~A~%" snapshot-id)))
 
 (defun %store-cli-delete-registry (args)
-  (multiple-value-bind (snapshot-ids dry-run force)
+  (multiple-value-bind (snapshot-ids prefixes dry-run force)
       (%parse-store-delete-registry-args args)
     (format t "~A~%"
             (emit-json
-             (if (= (length snapshot-ids) 1)
+             (if (and (= (length snapshot-ids) 1)
+                      (null prefixes))
                  (delete-registry-snapshot (first snapshot-ids) :dry-run dry-run :force force)
-                 (delete-registry-snapshots snapshot-ids :dry-run dry-run :force force))))))
+                 (delete-registry-snapshots snapshot-ids :dry-run dry-run :force force :prefixes prefixes))))))
 
 (defun %store-cli-prune-registry (args)
   (multiple-value-bind (keep-count dry-run force)

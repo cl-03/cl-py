@@ -59,6 +59,7 @@ sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run
+sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run
@@ -141,6 +142,8 @@ Lifecycle delete/prune JSON responses also include an `audit` object with the op
 execution mode, timestamp, and store root for downstream logging.
 `store delete-registry` accepts one or more snapshot ids so cleanup batches can be previewed or
 executed in a single command.
+It also accepts repeated `--prefix <text>` selectors to target matching snapshot ids without
+spelling out each id explicitly.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.
