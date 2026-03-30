@@ -281,20 +281,20 @@
           (when path
             (list (cons "path" (namestring path))))))
 
-(defun %lifecycle-delete-selector-legacy-fields (matched)
+(defun %match-request-derived-fields (matched field-names)
   (let ((match-request (%lifecycle-match-request matched)))
-    (list (cons "prefixes" (%object-field match-request "prefixes"))
-          (cons "created-before" (%object-field match-request "created-before"))
-          (cons "created-after" (%object-field match-request "created-after")))))
+    (mapcar (lambda (field-name)
+              (cons field-name (%object-field match-request field-name)))
+            field-names)))
+
+(defun %lifecycle-delete-selector-legacy-fields (matched)
+  (%match-request-derived-fields matched '("prefixes" "created-before" "created-after")))
 
 (defun %lifecycle-delete-selector-audit-fields (matched)
-  (let ((match-request (%lifecycle-match-request matched)))
-    (list (cons "explicit-snapshot-ids" (%object-field match-request "explicit-snapshot-ids"))
-          (cons "explicit-count" (%object-field match-request "explicit-count"))
-          (cons "prefixes" (%object-field match-request "prefixes"))
-          (cons "prefix-count" (%object-field match-request "prefix-count"))
-          (cons "created-before" (%object-field match-request "created-before"))
-          (cons "created-after" (%object-field match-request "created-after")))))
+  (%match-request-derived-fields matched
+                               '("explicit-snapshot-ids" "explicit-count"
+                                 "prefixes" "prefix-count"
+                                 "created-before" "created-after")))
 
 (defun %lifecycle-response-object (base-fields legacy-fields summary matched audit &key pre-matched-fields post-matched-fields trailing-fields)
   (append (list :object)
