@@ -102,12 +102,26 @@
         (cons "store-root" (namestring (%store-root directory)))
         (cons "fields" (list :object fields))))
 
+(defun %ensure-delete-confirmation (dry-run force)
+  (unless (or dry-run force)
+    (%store-error "Deleting a registry snapshot requires :force t or :dry-run t")))
+
+(defun %resolve-registry-snapshot-paths (snapshot-ids directory)
+  (let ((resolved-snapshot-ids (%normalize-filter-values snapshot-ids)))
+    (unless resolved-snapshot-ids
+      (%store-error "At least one registry snapshot id is required"))
+    (mapcar (lambda (snapshot-id)
+              (let ((path (%registry-snapshot-path snapshot-id directory)))
+                (unless (probe-file path)
+                  (%store-error "Registry snapshot was not found: ~A" snapshot-id))
+                (cons snapshot-id path)))
+            resolved-snapshot-ids)))
+
 (defun delete-registry-snapshot (snapshot-id &key directory dry-run force)
   (let ((path (%registry-snapshot-path snapshot-id directory)))
+    (%ensure-delete-confirmation dry-run force)
     (unless (probe-file path)
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
-    (unless (or dry-run force)
-      (%store-error "Deleting a registry snapshot requires :force t or :dry-run t"))
     (unless dry-run
       (delete-file path))
     (list :object
@@ -125,6 +139,31 @@
              (cons "path" (namestring path))))
           (cons "snapshot-id" snapshot-id)
           (cons "path" (namestring path)))))
+
+(defun delete-registry-snapshots (snapshot-ids &key directory dry-run force)
+  (%ensure-delete-confirmation dry-run force)
+  (let* ((resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory))
+         (resolved-snapshot-ids (mapcar #'car resolved-paths))
+         (resolved-pathnames (mapcar #'cdr resolved-paths)))
+    (unless dry-run
+      (dolist (path resolved-pathnames)
+        (delete-file path)))
+    (list :object
+          (cons "deleted" (if dry-run :false :true))
+          (cons "dry-run" (if dry-run :true :false))
+          (cons "forced" (if (and force (not dry-run)) :true :false))
+          (cons "would-delete" (if dry-run :true :false))
+          (cons "deleted-count" (length resolved-snapshot-ids))
+          (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
+          (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
+          (cons "audit"
+                (%store-lifecycle-audit-object
+                 "delete-registry"
+                 directory
+                 dry-run
+                 force
+                 (cons "snapshot-count" (length resolved-snapshot-ids))
+                 (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector)))))))
 
 (defun prune-registry-snapshots (keep-count &key directory dry-run force)
   (unless (and (integerp keep-count) (>= keep-count 0))
@@ -347,7 +386,7 @@
   (%parse-non-negative-integer text command-name))
 
 (defun %parse-store-delete-registry-args (args)
-  (let ((snapshot-id nil)
+  (let ((snapshot-ids nil)
         (dry-run nil)
         (force nil))
     (loop while args
@@ -357,15 +396,11 @@
                 (setf dry-run t))
                ((string= argument "--force")
                 (setf force t))
-               ((null snapshot-id)
-                (setf snapshot-id argument))
-               (t
-                (cl-py.internal:signal-cli-usage-error
-                 "store delete-registry requires exactly one snapshot id and one of --dry-run or --force"
-                 #'%print-store-usage))))
-    (unless snapshot-id
+              (t
+               (push argument snapshot-ids))))
+       (unless snapshot-ids
       (cl-py.internal:signal-cli-usage-error
-       "store delete-registry requires a snapshot id"
+         "store delete-registry requires at least one snapshot id"
        #'%print-store-usage))
     (when (and dry-run force)
       (cl-py.internal:signal-cli-usage-error
@@ -375,7 +410,7 @@
       (cl-py.internal:signal-cli-usage-error
        "store delete-registry requires --dry-run or --force"
        #'%print-store-usage))
-    (values snapshot-id dry-run force)))
+       (values (nreverse snapshot-ids) dry-run force)))
 
 (defun %parse-store-prune-registry-args (args)
   (let ((keep-count nil)
@@ -989,7 +1024,7 @@
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
-  (format t "  store delete-registry <snapshot-id> (--dry-run | --force)~%")
+  (format t "  store delete-registry <snapshot-id> [<snapshot-id> ...] (--dry-run | --force)~%")
   (format t "  store prune-registry <keep-count> (--dry-run | --force)~%")
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
@@ -1009,6 +1044,7 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store list-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run~%")
@@ -1054,9 +1090,13 @@
     (format t "~A~%" snapshot-id)))
 
 (defun %store-cli-delete-registry (args)
-  (multiple-value-bind (snapshot-id dry-run force)
+  (multiple-value-bind (snapshot-ids dry-run force)
       (%parse-store-delete-registry-args args)
-    (format t "~A~%" (emit-json (delete-registry-snapshot snapshot-id :dry-run dry-run :force force)))))
+    (format t "~A~%"
+            (emit-json
+             (if (= (length snapshot-ids) 1)
+                 (delete-registry-snapshot (first snapshot-ids) :dry-run dry-run :force force)
+                 (delete-registry-snapshots snapshot-ids :dry-run dry-run :force force))))))
 
 (defun %store-cli-prune-registry (args)
   (multiple-value-bind (keep-count dry-run force)

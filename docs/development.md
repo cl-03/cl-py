@@ -113,6 +113,7 @@ sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force
+sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force
 sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run
@@ -162,6 +163,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, group-selected output, row sorting, row offsets, row limits, per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export, aggregate report diffs, snapshot deletion, and snapshot pruning
 - Delete/prune lifecycle commands require `--force` for destructive execution and support `--dry-run` so cleanup plans can be inspected before any files are removed
 - Lifecycle delete/prune responses now include structured `audit` metadata with operation, mode, execution time, and store root information
+- `store delete-registry` can remove multiple snapshot ids in one call, with the same `--force` and `--dry-run` safety model
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

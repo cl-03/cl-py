@@ -30,6 +30,7 @@
    #:list-registry-snapshots
    #:load-registry-snapshot
   #:delete-registry-snapshot
+  #:delete-registry-snapshots
   #:prune-registry-snapshots
    #:latest-registry-snapshot-id
    #:summarize-registry-snapshot
