@@ -181,6 +181,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Delete responses now also expose a structured `summary` object so callers can consume delete impact totals from one stable sub-object alongside `matched`
 - Delete and prune summaries now both expose a shared `affected-count` field so automation can read lifecycle impact totals through one common key
 - Delete and prune summaries now both expose shared `affected-count` and `affected-snapshot-ids` fields so automation can read lifecycle impact totals and ordered removal targets through one common shape
+- In implementation terms, lifecycle `summary` is now the canonical source for count data, while mirrored top-level count fields are kept as compatibility aliases for existing callers
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

@@ -304,6 +304,9 @@ Shared lifecycle fields returned by both `store delete-registry` and `store prun
 - `summary.affected-count`: number of snapshots materially affected by the lifecycle plan; for delete and prune this is the number of snapshots selected for removal
 - `summary.affected-snapshot-ids`: ordered snapshot ids materially affected by the lifecycle plan; for delete and prune this is the ordered removal set
 
+For new automation, prefer `summary.*` as the canonical source for lifecycle counts and affected-id lists.
+The mirrored top-level count fields remain available for compatibility with existing callers.
+
 Delete-specific fields returned by `store delete-registry`:
 
 - `deleted`: `true` only when snapshot files were actually removed

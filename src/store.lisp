@@ -179,6 +179,24 @@
                 (cons "would-after-count" would-after-count))
           extra-fields))
 
+(defun %object-field (object key)
+  (cdr (assoc key (rest object) :test #'string=)))
+
+(defun %lifecycle-legacy-count-fields (summary)
+  (list (cons "before-count" (%object-field summary "before-count"))
+        (cons "after-count" (%object-field summary "after-count"))
+        (cons "would-after-count" (%object-field summary "would-after-count"))))
+
+(defun %lifecycle-delete-legacy-fields (summary)
+  (append (%lifecycle-legacy-count-fields summary)
+          (list (cons "deleted-count" (%object-field summary "deleted-count")))))
+
+(defun %lifecycle-prune-legacy-fields (summary)
+  (append (%lifecycle-legacy-count-fields summary)
+          (list (cons "keep-count" (%object-field summary "keep-count"))
+                (cons "kept-count" (%object-field summary "kept-count"))
+                (cons "deleted-count" (%object-field summary "deleted-count")))))
+
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
           (%normalize-filter-values
@@ -198,40 +216,39 @@
   (let* ((before-count (length (list-registry-snapshots :directory directory)))
          (path (%registry-snapshot-path snapshot-id directory))
          (would-after-count (max 0 (1- before-count)))
-         (after-count (if dry-run before-count would-after-count)))
+         (after-count (if dry-run before-count would-after-count))
+         (summary (%lifecycle-summary-object
+                   1
+                   before-count
+                   after-count
+                   would-after-count
+                   :affected-snapshot-ids (list snapshot-id)
+                   :extra-fields (list (cons "deleted-count" 1)))))
     (%ensure-delete-confirmation dry-run force)
     (unless (probe-file path)
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
     (unless dry-run
       (delete-file path))
-    (list :object
-          (cons "deleted" (if dry-run :false :true))
-          (cons "dry-run" (if dry-run :true :false))
-          (cons "forced" (if (and force (not dry-run)) :true :false))
-          (cons "would-delete" (if dry-run :true :false))
-          (cons "before-count" before-count)
-          (cons "after-count" after-count)
-          (cons "would-after-count" would-after-count)
-          (cons "summary"
-            (%lifecycle-summary-object
-             1
-             before-count
-             after-count
-             would-after-count
-             :affected-snapshot-ids (list snapshot-id)
-             :extra-fields (list (cons "deleted-count" 1))))
-          (cons "matched"
-                (%lifecycle-match-object (list snapshot-id) nil nil))
-          (cons "audit"
-            (%store-lifecycle-audit-object
-             "delete-registry"
-             directory
-             dry-run
-             force
-             (cons "snapshot-id" snapshot-id)
-             (cons "path" (namestring path))))
+        (append
+         (list :object
+           (cons "deleted" (if dry-run :false :true))
+           (cons "dry-run" (if dry-run :true :false))
+           (cons "forced" (if (and force (not dry-run)) :true :false))
+           (cons "would-delete" (if dry-run :true :false)))
+         (%lifecycle-legacy-count-fields summary)
+         (list (cons "summary" summary)
+           (cons "matched"
+             (%lifecycle-match-object (list snapshot-id) nil nil))
+           (cons "audit"
+             (%store-lifecycle-audit-object
+          "delete-registry"
+          directory
+          dry-run
+          force
           (cons "snapshot-id" snapshot-id)
-          (cons "path" (namestring path)))))
+          (cons "path" (namestring path))))
+           (cons "snapshot-id" snapshot-id)
+           (cons "path" (namestring path))))))
 
 (defun delete-registry-snapshots (snapshot-ids &key directory dry-run force prefixes created-before created-after)
   (%ensure-delete-confirmation dry-run force)
@@ -244,48 +261,46 @@
          (resolved-snapshot-ids (mapcar #'car resolved-paths))
          (resolved-pathnames (mapcar #'cdr resolved-paths))
          (would-after-count (max 0 (- before-count (length resolved-snapshot-ids))))
-         (after-count (if dry-run before-count would-after-count)))
+         (after-count (if dry-run before-count would-after-count))
+         (summary (%lifecycle-summary-object
+                   (length resolved-snapshot-ids)
+                   before-count
+                   after-count
+                   would-after-count
+                   :affected-snapshot-ids resolved-snapshot-ids
+                   :extra-fields (list (cons "deleted-count" (length resolved-snapshot-ids))))))
     (unless dry-run
       (dolist (path resolved-pathnames)
         (delete-file path)))
-    (list :object
-          (cons "deleted" (if dry-run :false :true))
-          (cons "dry-run" (if dry-run :true :false))
-          (cons "forced" (if (and force (not dry-run)) :true :false))
-          (cons "would-delete" (if dry-run :true :false))
-          (cons "before-count" before-count)
-          (cons "after-count" after-count)
-          (cons "would-after-count" would-after-count)
-          (cons "deleted-count" (length resolved-snapshot-ids))
-          (cons "summary"
-            (%lifecycle-summary-object
-             (length resolved-snapshot-ids)
-             before-count
-             after-count
-             would-after-count
-             :affected-snapshot-ids resolved-snapshot-ids
-             :extra-fields (list (cons "deleted-count" (length resolved-snapshot-ids)))))
-          (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
+    (append
+     (list :object
+           (cons "deleted" (if dry-run :false :true))
+           (cons "dry-run" (if dry-run :true :false))
+           (cons "forced" (if (and force (not dry-run)) :true :false))
+           (cons "would-delete" (if dry-run :true :false)))
+     (%lifecycle-delete-legacy-fields summary)
+     (list (cons "summary" summary)
+           (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
            (cons "prefixes" (coerce resolved-prefixes 'vector))
            (cons "created-before" (or created-before :null))
-              (cons "created-after" (or created-after :null))
-              (cons "matched"
-                (%lifecycle-match-object
-                 resolved-explicit-snapshot-ids
-                 prefix-snapshot-ids
-                 created-window-snapshot-ids))
-          (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
-          (cons "audit"
-                (%store-lifecycle-audit-object
-                 "delete-registry"
-                 directory
-                 dry-run
-                 force
-                 (cons "snapshot-count" (length resolved-snapshot-ids))
-                 (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
-                 (cons "prefixes" (coerce resolved-prefixes 'vector))
-                 (cons "created-before" (or created-before :null))
-                 (cons "created-after" (or created-after :null)))))))
+           (cons "created-after" (or created-after :null))
+           (cons "matched"
+                 (%lifecycle-match-object
+                  resolved-explicit-snapshot-ids
+                  prefix-snapshot-ids
+                  created-window-snapshot-ids))
+           (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
+           (cons "audit"
+                 (%store-lifecycle-audit-object
+                  "delete-registry"
+                  directory
+                  dry-run
+                  force
+                  (cons "snapshot-count" (length resolved-snapshot-ids))
+                  (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
+                  (cons "prefixes" (coerce resolved-prefixes 'vector))
+                  (cons "created-before" (or created-before :null))
+                  (cons "created-after" (or created-after :null))))))))
 
 (defun prune-registry-snapshots (keep-count &key directory dry-run force)
   (unless (and (integerp keep-count) (>= keep-count 0))
@@ -297,40 +312,39 @@
          (kept-snapshot-ids (subseq snapshot-ids 0 (min keep-count (length snapshot-ids))))
          (deleted-snapshot-ids (nthcdr (length kept-snapshot-ids) snapshot-ids))
          (would-after-count (length kept-snapshot-ids))
-         (after-count (if dry-run before-count would-after-count)))
+         (after-count (if dry-run before-count would-after-count))
+         (summary (%lifecycle-summary-object
+                   (length deleted-snapshot-ids)
+                   before-count
+                   after-count
+                   would-after-count
+                   :affected-snapshot-ids deleted-snapshot-ids
+                   :extra-fields (list (cons "keep-count" keep-count)
+                                       (cons "kept-count" (length kept-snapshot-ids))
+                                       (cons "deleted-count" (length deleted-snapshot-ids))))))
     (unless dry-run
       (dolist (snapshot-id deleted-snapshot-ids)
         (delete-file (%registry-snapshot-path snapshot-id directory))))
-    (list :object
-          (cons "dry-run" (if dry-run :true :false))
-          (cons "forced" (if (and force (not dry-run)) :true :false))
-          (cons "before-count" before-count)
-          (cons "after-count" after-count)
-          (cons "would-after-count" would-after-count)
-          (cons "summary"
-                (%lifecycle-summary-object
-                 (length deleted-snapshot-ids)
-                 before-count
-                 after-count
-                 would-after-count
-                 :affected-snapshot-ids deleted-snapshot-ids
-                 :extra-fields (list (cons "keep-count" keep-count)
-                                     (cons "kept-count" (length kept-snapshot-ids))
-                                     (cons "deleted-count" (length deleted-snapshot-ids)))))
-          (cons "audit"
-            (%store-lifecycle-audit-object
-             "prune-registry"
-             directory
-             dry-run
-             force
-             (cons "keep-count" keep-count)
-             (cons "kept-count" (length kept-snapshot-ids))
-             (cons "deleted-count" (length deleted-snapshot-ids))))
-          (cons "keep-count" keep-count)
-          (cons "kept-count" (length kept-snapshot-ids))
-          (cons "deleted-count" (length deleted-snapshot-ids))
-          (cons "kept-snapshot-ids" (coerce kept-snapshot-ids 'vector))
-          (cons "deleted-snapshot-ids" (coerce deleted-snapshot-ids 'vector)))))
+    (append
+     (list :object
+           (cons "dry-run" (if dry-run :true :false))
+           (cons "forced" (if (and force (not dry-run)) :true :false)))
+     (%lifecycle-prune-legacy-fields summary)
+     (list (cons "summary" summary)
+           (cons "audit"
+                 (%store-lifecycle-audit-object
+                  "prune-registry"
+                  directory
+                  dry-run
+                  force
+                  (cons "keep-count" keep-count)
+                  (cons "kept-count" (length kept-snapshot-ids))
+                  (cons "deleted-count" (length deleted-snapshot-ids))))
+           (cons "keep-count" keep-count)
+           (cons "kept-count" (length kept-snapshot-ids))
+           (cons "deleted-count" (length deleted-snapshot-ids))
+           (cons "kept-snapshot-ids" (coerce kept-snapshot-ids 'vector))
+           (cons "deleted-snapshot-ids" (coerce deleted-snapshot-ids 'vector))))))
 
 (defun latest-registry-snapshot-id (&key directory)
   (first (list-registry-snapshots :directory directory)))
