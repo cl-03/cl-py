@@ -148,6 +148,8 @@ It also accepts repeated `--prefix <text>` selectors to target matching snapshot
 spelling out each id explicitly.
 Use `--created-before <ISO-8601>` to target snapshots older than a specific creation timestamp.
 Combine `--created-after` with `--created-before` to target snapshots within a bounded time window.
+Lifecycle cleanup responses now also expose `before-count`, `after-count`, and `would-after-count`
+so scripts can compare actual and projected snapshot totals directly.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

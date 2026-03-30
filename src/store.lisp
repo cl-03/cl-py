@@ -165,7 +165,10 @@
             resolved-snapshot-ids)))
 
 (defun delete-registry-snapshot (snapshot-id &key directory dry-run force)
-  (let ((path (%registry-snapshot-path snapshot-id directory)))
+  (let* ((before-count (length (list-registry-snapshots :directory directory)))
+         (path (%registry-snapshot-path snapshot-id directory))
+         (would-after-count (max 0 (1- before-count)))
+         (after-count (if dry-run before-count would-after-count)))
     (%ensure-delete-confirmation dry-run force)
     (unless (probe-file path)
       (%store-error "Registry snapshot was not found: ~A" snapshot-id))
@@ -176,6 +179,9 @@
           (cons "dry-run" (if dry-run :true :false))
           (cons "forced" (if (and force (not dry-run)) :true :false))
           (cons "would-delete" (if dry-run :true :false))
+          (cons "before-count" before-count)
+          (cons "after-count" after-count)
+          (cons "would-after-count" would-after-count)
           (cons "audit"
             (%store-lifecycle-audit-object
              "delete-registry"
@@ -190,9 +196,12 @@
 (defun delete-registry-snapshots (snapshot-ids &key directory dry-run force prefixes created-before created-after)
   (%ensure-delete-confirmation dry-run force)
   (let* ((resolved-prefixes (%normalize-filter-values prefixes))
+         (before-count (length (list-registry-snapshots :directory directory)))
          (resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory :prefixes resolved-prefixes :created-before created-before :created-after created-after))
          (resolved-snapshot-ids (mapcar #'car resolved-paths))
-         (resolved-pathnames (mapcar #'cdr resolved-paths)))
+         (resolved-pathnames (mapcar #'cdr resolved-paths))
+         (would-after-count (max 0 (- before-count (length resolved-snapshot-ids))))
+         (after-count (if dry-run before-count would-after-count)))
     (unless dry-run
       (dolist (path resolved-pathnames)
         (delete-file path)))
@@ -201,6 +210,9 @@
           (cons "dry-run" (if dry-run :true :false))
           (cons "forced" (if (and force (not dry-run)) :true :false))
           (cons "would-delete" (if dry-run :true :false))
+          (cons "before-count" before-count)
+          (cons "after-count" after-count)
+          (cons "would-after-count" would-after-count)
           (cons "deleted-count" (length resolved-snapshot-ids))
           (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
            (cons "prefixes" (coerce resolved-prefixes 'vector))
@@ -225,14 +237,20 @@
   (unless (or dry-run force)
     (%store-error "Pruning registry snapshots requires :force t or :dry-run t"))
   (let* ((snapshot-ids (list-registry-snapshots :directory directory))
+         (before-count (length snapshot-ids))
          (kept-snapshot-ids (subseq snapshot-ids 0 (min keep-count (length snapshot-ids))))
-         (deleted-snapshot-ids (nthcdr (length kept-snapshot-ids) snapshot-ids)))
+         (deleted-snapshot-ids (nthcdr (length kept-snapshot-ids) snapshot-ids))
+         (would-after-count (length kept-snapshot-ids))
+         (after-count (if dry-run before-count would-after-count)))
     (unless dry-run
       (dolist (snapshot-id deleted-snapshot-ids)
         (delete-file (%registry-snapshot-path snapshot-id directory))))
     (list :object
           (cons "dry-run" (if dry-run :true :false))
           (cons "forced" (if (and force (not dry-run)) :true :false))
+          (cons "before-count" before-count)
+          (cons "after-count" after-count)
+          (cons "would-after-count" would-after-count)
           (cons "audit"
             (%store-lifecycle-audit-object
              "prune-registry"
