@@ -118,13 +118,34 @@
                      thereis (%snapshot-id-prefix-p prefix snapshot-id))
           collect snapshot-id)))
 
-(defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes)
+(defun %timestamp-universal-time (timestamp)
+  (encode-universal-time (%timestamp-field timestamp :second)
+                         (%timestamp-field timestamp :minute)
+                         (%timestamp-field timestamp :hour)
+                         (%timestamp-field timestamp :day)
+                         (%timestamp-field timestamp :month)
+                         (%timestamp-field timestamp :year)
+                         (- (/ (%timestamp-field timestamp :offset-minutes) 60))))
+
+(defun %snapshot-created-before-p (snapshot-id threshold directory)
+  (< (%timestamp-universal-time (parse-iso-timestamp (%snapshot-created-at (load-registry-snapshot snapshot-id :directory directory))))
+     (%timestamp-universal-time (parse-iso-timestamp threshold))))
+
+(defun %snapshot-ids-created-before (created-before directory)
+  (if created-before
+      (loop for snapshot-id in (list-registry-snapshots :directory directory)
+            when (%snapshot-created-before-p snapshot-id created-before directory)
+            collect snapshot-id)
+      nil))
+
+(defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before)
   (let ((resolved-snapshot-ids
           (%normalize-filter-values
            (append snapshot-ids
-                   (%snapshot-ids-matching-prefixes prefixes directory)))))
+                   (%snapshot-ids-matching-prefixes prefixes directory)
+                   (%snapshot-ids-created-before created-before directory)))))
     (unless resolved-snapshot-ids
-      (%store-error "At least one registry snapshot id or matching --prefix selector is required"))
+      (%store-error "At least one registry snapshot id or matching --prefix/--created-before selector is required"))
     (mapcar (lambda (snapshot-id)
               (let ((path (%registry-snapshot-path snapshot-id directory)))
                 (unless (probe-file path)
@@ -155,10 +176,10 @@
           (cons "snapshot-id" snapshot-id)
           (cons "path" (namestring path)))))
 
-(defun delete-registry-snapshots (snapshot-ids &key directory dry-run force prefixes)
+(defun delete-registry-snapshots (snapshot-ids &key directory dry-run force prefixes created-before)
   (%ensure-delete-confirmation dry-run force)
   (let* ((resolved-prefixes (%normalize-filter-values prefixes))
-         (resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory :prefixes resolved-prefixes))
+         (resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory :prefixes resolved-prefixes :created-before created-before))
          (resolved-snapshot-ids (mapcar #'car resolved-paths))
          (resolved-pathnames (mapcar #'cdr resolved-paths)))
     (unless dry-run
@@ -171,7 +192,8 @@
           (cons "would-delete" (if dry-run :true :false))
           (cons "deleted-count" (length resolved-snapshot-ids))
           (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
-             (cons "prefixes" (coerce resolved-prefixes 'vector))
+           (cons "prefixes" (coerce resolved-prefixes 'vector))
+           (cons "created-before" (or created-before :null))
           (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
           (cons "audit"
                 (%store-lifecycle-audit-object
@@ -180,8 +202,9 @@
                  dry-run
                  force
                  (cons "snapshot-count" (length resolved-snapshot-ids))
-               (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
-               (cons "prefixes" (coerce resolved-prefixes 'vector)))))))
+                 (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
+                 (cons "prefixes" (coerce resolved-prefixes 'vector))
+                 (cons "created-before" (or created-before :null)))))))
 
 (defun prune-registry-snapshots (keep-count &key directory dry-run force)
   (unless (and (integerp keep-count) (>= keep-count 0))
@@ -406,6 +429,7 @@
 (defun %parse-store-delete-registry-args (args)
   (let ((snapshot-ids nil)
     (prefixes nil)
+      (created-before nil)
         (dry-run nil)
         (force nil))
     (loop while args
@@ -421,11 +445,18 @@
                  "store delete-registry requires a value after --prefix"
                  #'%print-store-usage))
                (push (pop args) prefixes))
+               ((string= argument "--created-before")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store delete-registry requires a value after --created-before"
+                   #'%print-store-usage))
+                (setf created-before (pop args))
+                (parse-iso-timestamp created-before))
               (t
                (push argument snapshot-ids))))
-       (unless (or snapshot-ids prefixes)
+    (unless (or snapshot-ids prefixes created-before)
       (cl-py.internal:signal-cli-usage-error
-         "store delete-registry requires at least one snapshot id or --prefix selector"
+       "store delete-registry requires at least one snapshot id or selector"
        #'%print-store-usage))
     (when (and dry-run force)
       (cl-py.internal:signal-cli-usage-error
@@ -437,6 +468,7 @@
        #'%print-store-usage))
        (values (nreverse snapshot-ids)
             (%normalize-filter-values (nreverse prefixes))
+            created-before
             dry-run
             force)))
 
@@ -1052,7 +1084,7 @@
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
-  (format t "  store delete-registry <snapshot-id> [<snapshot-id> ...] [--prefix <text> ...] (--dry-run | --force)~%")
+  (format t "  store delete-registry <snapshot-id> [<snapshot-id> ...] [--prefix <text> ...] [--created-before <timestamp>] (--dry-run | --force)~%")
   (format t "  store prune-registry <keep-count> (--dry-run | --force)~%")
   (format t "  store show-registry <snapshot-id>~%")
   (format t "  store latest-registry~%")
@@ -1074,6 +1106,7 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry --created-before 2026-03-30T00:00:00Z --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store prune-registry 5 --dry-run~%")
@@ -1119,14 +1152,15 @@
     (format t "~A~%" snapshot-id)))
 
 (defun %store-cli-delete-registry (args)
-  (multiple-value-bind (snapshot-ids prefixes dry-run force)
+  (multiple-value-bind (snapshot-ids prefixes created-before dry-run force)
       (%parse-store-delete-registry-args args)
     (format t "~A~%"
             (emit-json
              (if (and (= (length snapshot-ids) 1)
-                      (null prefixes))
+                      (null prefixes)
+                      (null created-before))
                  (delete-registry-snapshot (first snapshot-ids) :dry-run dry-run :force force)
-                 (delete-registry-snapshots snapshot-ids :dry-run dry-run :force force :prefixes prefixes))))))
+                 (delete-registry-snapshots snapshot-ids :dry-run dry-run :force force :prefixes prefixes :created-before created-before))))))
 
 (defun %store-cli-prune-registry (args)
   (multiple-value-bind (keep-count dry-run force)

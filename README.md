@@ -216,6 +216,7 @@ Current capabilities:
 - Load a snapshot back into the native JSON data model
 - Delete one or more saved registry snapshots by id with explicit force confirmation
 - Select saved registry snapshots for deletion by prefix in the same lifecycle command
+- Select saved registry snapshots for deletion by creation time threshold in the same lifecycle command
 - Prune older registry snapshots while keeping the newest N ids with explicit force confirmation
 - Preview delete and prune lifecycle operations with dry-run mode before changing disk state
 - Emit structured lifecycle audit metadata for delete and prune operations
