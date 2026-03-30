@@ -149,6 +149,12 @@
             collect snapshot-id)
       nil))
 
+(defun %lifecycle-match-object (explicit-snapshot-ids prefix-snapshot-ids created-window-snapshot-ids)
+  (list :object
+    (cons "explicit-snapshot-ids" (coerce (%normalize-filter-values explicit-snapshot-ids) 'vector))
+    (cons "prefix-snapshot-ids" (coerce (%normalize-filter-values prefix-snapshot-ids) 'vector))
+    (cons "created-window-snapshot-ids" (coerce (%normalize-filter-values created-window-snapshot-ids) 'vector))))
+
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
           (%normalize-filter-values
@@ -182,6 +188,8 @@
           (cons "before-count" before-count)
           (cons "after-count" after-count)
           (cons "would-after-count" would-after-count)
+              (cons "matched"
+                (%lifecycle-match-object (list snapshot-id) nil nil))
           (cons "audit"
             (%store-lifecycle-audit-object
              "delete-registry"
@@ -195,9 +203,12 @@
 
 (defun delete-registry-snapshots (snapshot-ids &key directory dry-run force prefixes created-before created-after)
   (%ensure-delete-confirmation dry-run force)
-  (let* ((resolved-prefixes (%normalize-filter-values prefixes))
+  (let* ((resolved-explicit-snapshot-ids (%normalize-filter-values snapshot-ids))
+         (resolved-prefixes (%normalize-filter-values prefixes))
          (before-count (length (list-registry-snapshots :directory directory)))
-         (resolved-paths (%resolve-registry-snapshot-paths snapshot-ids directory :prefixes resolved-prefixes :created-before created-before :created-after created-after))
+         (prefix-snapshot-ids (%snapshot-ids-matching-prefixes resolved-prefixes directory))
+         (created-window-snapshot-ids (%snapshot-ids-created-within-window directory created-before created-after))
+         (resolved-paths (%resolve-registry-snapshot-paths resolved-explicit-snapshot-ids directory :prefixes resolved-prefixes :created-before created-before :created-after created-after))
          (resolved-snapshot-ids (mapcar #'car resolved-paths))
          (resolved-pathnames (mapcar #'cdr resolved-paths))
          (would-after-count (max 0 (- before-count (length resolved-snapshot-ids))))
@@ -218,6 +229,11 @@
            (cons "prefixes" (coerce resolved-prefixes 'vector))
            (cons "created-before" (or created-before :null))
               (cons "created-after" (or created-after :null))
+              (cons "matched"
+                (%lifecycle-match-object
+                 resolved-explicit-snapshot-ids
+                 prefix-snapshot-ids
+                 created-window-snapshot-ids))
           (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
           (cons "audit"
                 (%store-lifecycle-audit-object
