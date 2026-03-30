@@ -280,7 +280,18 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 		"store-root": ".cl-py-store",
 		"keep-count": 2,
 		"kept-count": 2,
-		"deleted-count": 5
+		"deleted-count": 5,
+		"kept-snapshot-ids": [
+			"nightly-20260331",
+			"nightly-20260330"
+		],
+		"deleted-snapshot-ids": [
+			"nightly-20260329",
+			"nightly-20260328",
+			"nightly-20260327",
+			"nightly-20260326",
+			"nightly-20260325"
+		]
 	},
 	"keep-count": 2,
 	"kept-count": 2,
@@ -366,6 +377,9 @@ Delete-specific fields returned by `store delete-registry`:
 - `audit.explicit-snapshot-ids` / `audit.explicit-count` / `audit.prefixes` / `audit.prefix-count` / `audit.created-before` / `audit.created-after`: normalized selector request context echoed for audit/logging consumers
 - `deleted-count`: compatibility alias for `summary.deleted-count`
 - `snapshot-ids`: deduplicated snapshot ids that would be removed or were removed
+- `snapshot-id`: compatibility alias for the single-delete path when exactly one snapshot id was requested
+- `paths`: vector form of the resolved snapshot file paths; single-delete responses expose a one-item vector for contract symmetry with bulk delete
+- `path`: compatibility alias for the single-delete path when exactly one snapshot id was requested
 - `prefixes`: compatibility alias for `matched.request.prefixes`
 - `created-before`: compatibility alias for `matched.request.created-before`
 - `created-after`: compatibility alias for `matched.request.created-after`
@@ -384,13 +398,13 @@ Prune-specific fields returned by `store prune-registry`:
 - `matched.kept-count`: number of snapshots retained by the prune plan
 - `matched.deleted-snapshot-ids`: ordered snapshot ids removed or previewed for removal by the prune plan
 - `matched.deleted-count`: number of snapshots removed or previewed for removal by the prune plan
+- `audit.keep-count` / `audit.kept-count` / `audit.deleted-count`: prune request and resolved partition counts echoed for logging consumers
+- `audit.kept-snapshot-ids` / `audit.deleted-snapshot-ids`: resolved prune partitions echoed for audit/logging consumers
 - `keep-count`: compatibility alias for `summary.keep-count`
 - `kept-count`: compatibility alias for `summary.kept-count`
 - `deleted-count`: compatibility alias for `summary.deleted-count`
 - `kept-snapshot-ids`: compatibility snapshot-id list for retained snapshots
 - `deleted-snapshot-ids`: compatibility snapshot-id list for removed or previewed snapshots
-
-Prune-specific fields returned by `store prune-registry`:
 
 - `summary.keep-count`: requested number of newest snapshots to retain
 - `summary.affected-snapshot-ids`: older snapshot ids selected for removal by the prune plan

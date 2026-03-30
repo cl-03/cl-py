@@ -159,7 +159,8 @@ For lifecycle cleanup responses, the recommended stable contract is now the stru
 `matched` including `matched.request`, and `audit` sub-objects; mirrored top-level count and
 selector fields remain available only as compatibility aliases, delete audit metadata echoes
 normalized selector request context, and prune now uses the same request-versus-resolution
-structure for retained versus deleted snapshots.
+structure for retained versus deleted snapshots, including audit-level kept/deleted partition
+metadata for logging.
 
 ## Test Runner
 

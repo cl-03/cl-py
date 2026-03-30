@@ -186,6 +186,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Delete responses now also expose `matched.request` so selector input metadata has a structured canonical home, while top-level selector aliases are documented as compatibility aliases rather than preferred fields
 - Delete audit payloads now also mirror normalized selector request metadata derived from `matched.request`, so logging consumers and response consumers share one selector context model
 - Prune responses now also expose `matched.request` plus resolved kept/deleted partition metadata, so delete and prune share the same request-versus-resolution contract shape
+- Prune audit payloads now also echo resolved kept/deleted snapshot partitions, so lifecycle logs can reconstruct retention decisions without joining against top-level compatibility fields
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

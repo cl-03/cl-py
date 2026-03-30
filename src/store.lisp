@@ -183,8 +183,8 @@
         (cons "keep-count" keep-count)))
 
 (defun %lifecycle-prune-match-object (kept-snapshot-ids deleted-snapshot-ids)
-  (let ((resolved-kept-snapshot-ids (%normalize-filter-values kept-snapshot-ids))
-        (resolved-deleted-snapshot-ids (%normalize-filter-values deleted-snapshot-ids)))
+  (let ((resolved-kept-snapshot-ids (%stable-unique-values kept-snapshot-ids))
+    (resolved-deleted-snapshot-ids (%stable-unique-values deleted-snapshot-ids)))
     (list :object
           (cons "kept-snapshot-ids" (coerce resolved-kept-snapshot-ids 'vector))
           (cons "kept-count" (length resolved-kept-snapshot-ids))
@@ -220,6 +220,17 @@
           (list (cons "keep-count" (%object-field summary "keep-count"))
                 (cons "kept-count" (%object-field summary "kept-count"))
                 (cons "deleted-count" (%object-field summary "deleted-count")))))
+
+(defun %lifecycle-prune-legacy-id-fields (match-object)
+  (list (cons "kept-snapshot-ids" (%object-field match-object "kept-snapshot-ids"))
+        (cons "deleted-snapshot-ids" (%object-field match-object "deleted-snapshot-ids"))))
+
+(defun %lifecycle-prune-audit-fields (match-request match-object)
+  (list (cons "keep-count" (%object-field match-request "keep-count"))
+        (cons "kept-count" (%object-field match-object "kept-count"))
+        (cons "deleted-count" (%object-field match-object "deleted-count"))
+        (cons "kept-snapshot-ids" (%object-field match-object "kept-snapshot-ids"))
+        (cons "deleted-snapshot-ids" (%object-field match-object "deleted-snapshot-ids"))))
 
 (defun %lifecycle-delete-selector-legacy-fields (match-request)
   (list (cons "prefixes" (%object-field match-request "prefixes"))
@@ -273,7 +284,8 @@
            (cons "dry-run" (if dry-run :true :false))
            (cons "forced" (if (and force (not dry-run)) :true :false))
            (cons "would-delete" (if dry-run :true :false)))
-         (%lifecycle-legacy-count-fields summary)
+         (%lifecycle-delete-legacy-fields summary)
+         (%lifecycle-delete-selector-legacy-fields match-request)
          (list (cons "summary" summary)
            (cons "matched"
                  (append (%lifecycle-match-object (list snapshot-id) nil nil)
@@ -284,9 +296,13 @@
               directory
               dry-run
               force
-              (append (list (cons "snapshot-id" snapshot-id)
+            (append (list (cons "snapshot-count" 1)
+              (cons "snapshot-ids" (vector snapshot-id))
+              (cons "snapshot-id" snapshot-id)
                     (cons "path" (namestring path)))
                   (%lifecycle-delete-selector-audit-fields match-request))))
+             (cons "snapshot-ids" (vector snapshot-id))
+             (cons "paths" (vector (namestring path)))
            (cons "snapshot-id" snapshot-id)
            (cons "path" (namestring path))))))
 
@@ -352,6 +368,9 @@
          (would-after-count (length kept-snapshot-ids))
          (after-count (if dry-run before-count would-after-count))
          (match-request (%lifecycle-prune-request-object keep-count))
+      (match-object (%lifecycle-prune-match-object kept-snapshot-ids deleted-snapshot-ids))
+      (matched (append match-object
+             (list (cons "request" match-request))))
          (summary (%lifecycle-summary-object
                    (length deleted-snapshot-ids)
                    before-count
@@ -369,24 +388,16 @@
            (cons "dry-run" (if dry-run :true :false))
            (cons "forced" (if (and force (not dry-run)) :true :false)))
      (%lifecycle-prune-legacy-fields summary)
-     (list (cons "summary" summary)
-           (cons "matched"
-             (append (%lifecycle-prune-match-object kept-snapshot-ids deleted-snapshot-ids)
-             (list (cons "request" match-request))))
+         (%lifecycle-prune-legacy-id-fields match-object)
+         (list (cons "summary" summary)
+           (cons "matched" matched)
            (cons "audit"
-                 (%store-lifecycle-audit-object
-                  "prune-registry"
-                  directory
-                  dry-run
-                  force
-                  (cons "keep-count" keep-count)
-                  (cons "kept-count" (length kept-snapshot-ids))
-                  (cons "deleted-count" (length deleted-snapshot-ids))))
-           (cons "keep-count" keep-count)
-           (cons "kept-count" (length kept-snapshot-ids))
-           (cons "deleted-count" (length deleted-snapshot-ids))
-           (cons "kept-snapshot-ids" (coerce kept-snapshot-ids 'vector))
-           (cons "deleted-snapshot-ids" (coerce deleted-snapshot-ids 'vector))))))
+             (apply #'%store-lifecycle-audit-object
+            "prune-registry"
+            directory
+            dry-run
+            force
+            (%lifecycle-prune-audit-fields match-request match-object)))))))
 
 (defun latest-registry-snapshot-id (&key directory)
   (first (list-registry-snapshots :directory directory)))
