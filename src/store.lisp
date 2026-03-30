@@ -279,6 +279,14 @@
           (cons "before-count" before-count)
           (cons "after-count" after-count)
           (cons "would-after-count" would-after-count)
+          (cons "summary"
+                (list :object
+                      (cons "keep-count" keep-count)
+                      (cons "kept-count" (length kept-snapshot-ids))
+                      (cons "deleted-count" (length deleted-snapshot-ids))
+                      (cons "before-count" before-count)
+                      (cons "after-count" after-count)
+                      (cons "would-after-count" would-after-count)))
           (cons "audit"
             (%store-lifecycle-audit-object
              "prune-registry"

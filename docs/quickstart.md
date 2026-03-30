@@ -253,6 +253,9 @@ sbcl --script scripts/dev-cli.lisp store prune-registry 2 --dry-run
 
 This response shape is useful when automation needs both the projected post-prune size
 (`would-after-count`) and the exact snapshot ids that would be kept or removed.
+Prune responses also expose a `summary` object that groups `keep-count`, `kept-count`,
+`deleted-count`, `before-count`, `after-count`, and `would-after-count` into one stable
+sub-object for script consumers.
 
 ## Lifecycle Response Fields
 
@@ -287,6 +290,12 @@ Delete-specific fields returned by `store delete-registry`:
 
 Prune-specific fields returned by `store prune-registry`:
 
+- `summary.keep-count`: requested number of newest snapshots to retain
+- `summary.kept-count`: number of snapshots retained by the prune plan
+- `summary.deleted-count`: number of snapshots removed or scheduled for removal
+- `summary.before-count`: current snapshot total before pruning
+- `summary.after-count`: actual snapshot total after the call returns
+- `summary.would-after-count`: projected snapshot total after the prune plan completes
 - `keep-count`: requested number of newest snapshots to retain
 - `kept-count`: number of snapshots that remain after pruning or would remain after execution
 - `deleted-count`: number of snapshots removed or scheduled for removal by the prune plan
