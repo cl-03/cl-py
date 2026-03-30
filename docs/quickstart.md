@@ -312,6 +312,7 @@ The mirrored top-level count fields remain available for compatibility with exis
 Recommended fields for new automation:
 
 - `summary.*` for lifecycle impact counts and affected snapshot ids
+- `matched.request.*` for delete request selector inputs
 - `matched.*` for delete selector provenance and deduplicated selector totals
 - `audit.*` for logging, mode detection, and execution timestamps
 
@@ -319,6 +320,7 @@ Compatibility fields retained for existing callers:
 
 - top-level `before-count`, `after-count`, and `would-after-count`
 - top-level delete `deleted-count`
+- top-level delete `prefixes`, `created-before`, and `created-after`
 - top-level prune `keep-count`, `kept-count`, and `deleted-count`
 
 Current compatibility policy:
@@ -336,6 +338,12 @@ Delete-specific fields returned by `store delete-registry`:
 - `summary.before-count`: current snapshot total before deletion
 - `summary.after-count`: actual snapshot total after the call returns
 - `summary.would-after-count`: projected snapshot total after the delete plan completes
+- `matched.request.explicit-snapshot-ids`: normalized explicit snapshot ids supplied by the caller
+- `matched.request.explicit-count`: count of explicit snapshot ids supplied by the caller
+- `matched.request.prefixes`: normalized repeated `--prefix` selector inputs
+- `matched.request.prefix-count`: count of repeated `--prefix` selector inputs
+- `matched.request.created-before`: echoed upper timestamp bound from the caller or `null`
+- `matched.request.created-after`: echoed lower timestamp bound from the caller or `null`
 - `deleted-count`: number of unique snapshots selected for deletion
 - `snapshot-ids`: deduplicated snapshot ids that would be removed or were removed
 - `prefixes`: repeated `--prefix` selectors echoed back in normalized order

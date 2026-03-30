@@ -167,6 +167,17 @@
           (cons "created-window-count" (length resolved-created-window-snapshot-ids))
           (cons "total-matched-count" (length resolved-total-matched-snapshot-ids)))))
 
+        (defun %lifecycle-match-request-object (explicit-snapshot-ids prefixes created-before created-after)
+          (let ((resolved-explicit-snapshot-ids (%normalize-filter-values explicit-snapshot-ids))
+            (resolved-prefixes (%normalize-filter-values prefixes)))
+            (list :object
+              (cons "explicit-snapshot-ids" (coerce resolved-explicit-snapshot-ids 'vector))
+              (cons "explicit-count" (length resolved-explicit-snapshot-ids))
+              (cons "prefixes" (coerce resolved-prefixes 'vector))
+              (cons "prefix-count" (length resolved-prefixes))
+              (cons "created-before" (or created-before :null))
+              (cons "created-after" (or created-after :null)))))
+
 (defun %stable-unique-values (values)
   (remove-duplicates (remove nil (copy-list values)) :test #'string= :from-end t))
 
@@ -197,6 +208,11 @@
                 (cons "kept-count" (%object-field summary "kept-count"))
                 (cons "deleted-count" (%object-field summary "deleted-count")))))
 
+(defun %lifecycle-delete-selector-legacy-fields (match-request)
+  (list (cons "prefixes" (%object-field match-request "prefixes"))
+        (cons "created-before" (%object-field match-request "created-before"))
+        (cons "created-after" (%object-field match-request "created-after"))))
+
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
           (%normalize-filter-values
@@ -217,6 +233,7 @@
          (path (%registry-snapshot-path snapshot-id directory))
          (would-after-count (max 0 (1- before-count)))
          (after-count (if dry-run before-count would-after-count))
+         (match-request (%lifecycle-match-request-object (list snapshot-id) nil nil nil))
          (summary (%lifecycle-summary-object
                    1
                    before-count
@@ -238,7 +255,8 @@
          (%lifecycle-legacy-count-fields summary)
          (list (cons "summary" summary)
            (cons "matched"
-             (%lifecycle-match-object (list snapshot-id) nil nil))
+                 (append (%lifecycle-match-object (list snapshot-id) nil nil)
+                 (list (cons "request" match-request))))
            (cons "audit"
              (%store-lifecycle-audit-object
           "delete-registry"
@@ -262,6 +280,7 @@
          (resolved-pathnames (mapcar #'cdr resolved-paths))
          (would-after-count (max 0 (- before-count (length resolved-snapshot-ids))))
          (after-count (if dry-run before-count would-after-count))
+         (match-request (%lifecycle-match-request-object resolved-explicit-snapshot-ids resolved-prefixes created-before created-after))
          (summary (%lifecycle-summary-object
                    (length resolved-snapshot-ids)
                    before-count
@@ -279,16 +298,15 @@
            (cons "forced" (if (and force (not dry-run)) :true :false))
            (cons "would-delete" (if dry-run :true :false)))
      (%lifecycle-delete-legacy-fields summary)
+         (%lifecycle-delete-selector-legacy-fields match-request)
      (list (cons "summary" summary)
            (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
-           (cons "prefixes" (coerce resolved-prefixes 'vector))
-           (cons "created-before" (or created-before :null))
-           (cons "created-after" (or created-after :null))
            (cons "matched"
-                 (%lifecycle-match-object
-                  resolved-explicit-snapshot-ids
-                  prefix-snapshot-ids
-                  created-window-snapshot-ids))
+             (append (%lifecycle-match-object
+              resolved-explicit-snapshot-ids
+              prefix-snapshot-ids
+              created-window-snapshot-ids)
+             (list (cons "request" match-request))))
            (cons "paths" (coerce (mapcar #'namestring resolved-pathnames) 'vector))
            (cons "audit"
                  (%store-lifecycle-audit-object
