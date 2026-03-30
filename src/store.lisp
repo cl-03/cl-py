@@ -167,6 +167,13 @@
           (cons "created-window-count" (length resolved-created-window-snapshot-ids))
           (cons "total-matched-count" (length resolved-total-matched-snapshot-ids)))))
 
+(defun %lifecycle-delete-summary-object (deleted-count before-count after-count would-after-count)
+  (list :object
+        (cons "deleted-count" deleted-count)
+        (cons "before-count" before-count)
+        (cons "after-count" after-count)
+        (cons "would-after-count" would-after-count)))
+
 (defun %resolve-registry-snapshot-paths (snapshot-ids directory &key prefixes created-before created-after)
   (let ((resolved-snapshot-ids
           (%normalize-filter-values
@@ -200,7 +207,9 @@
           (cons "before-count" before-count)
           (cons "after-count" after-count)
           (cons "would-after-count" would-after-count)
-              (cons "matched"
+          (cons "summary"
+            (%lifecycle-delete-summary-object 1 before-count after-count would-after-count))
+          (cons "matched"
                 (%lifecycle-match-object (list snapshot-id) nil nil))
           (cons "audit"
             (%store-lifecycle-audit-object
@@ -237,6 +246,12 @@
           (cons "after-count" after-count)
           (cons "would-after-count" would-after-count)
           (cons "deleted-count" (length resolved-snapshot-ids))
+          (cons "summary"
+            (%lifecycle-delete-summary-object
+             (length resolved-snapshot-ids)
+             before-count
+             after-count
+             would-after-count))
           (cons "snapshot-ids" (coerce resolved-snapshot-ids 'vector))
            (cons "prefixes" (coerce resolved-prefixes 'vector))
            (cons "created-before" (or created-before :null))

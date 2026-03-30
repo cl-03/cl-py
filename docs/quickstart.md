@@ -152,6 +152,8 @@ Lifecycle cleanup responses now also expose `before-count`, `after-count`, and `
 so scripts can compare actual and projected snapshot totals directly.
 Delete responses also expose a `matched` object so scripts can distinguish explicit id matches,
 prefix matches, and time-window matches.
+They also expose a `summary` object that groups `deleted-count`, `before-count`,
+`after-count`, and `would-after-count` into one stable sub-object.
 That object now also includes `explicit-count`, `prefix-count`, and `created-window-count`
 for callers that only need per-source totals.
 It also includes `total-matched-count`, which is deduplicated across all selector sources.
@@ -275,6 +277,10 @@ Delete-specific fields returned by `store delete-registry`:
 
 - `deleted`: `true` only when snapshot files were actually removed
 - `would-delete`: `true` during preview mode to indicate the request resolved at least one deletion target
+- `summary.deleted-count`: number of unique snapshots selected for deletion
+- `summary.before-count`: current snapshot total before deletion
+- `summary.after-count`: actual snapshot total after the call returns
+- `summary.would-after-count`: projected snapshot total after the delete plan completes
 - `deleted-count`: number of unique snapshots selected for deletion
 - `snapshot-ids`: deduplicated snapshot ids that would be removed or were removed
 - `prefixes`: repeated `--prefix` selectors echoed back in normalized order

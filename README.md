@@ -223,6 +223,7 @@ Current capabilities:
 - Report selector match counts for delete lifecycle operations
 - Report a deduplicated total selector match count for mixed delete lifecycle operations
 - Report a structured prune summary object for lifecycle cleanup automation
+- Report a structured delete summary object for lifecycle cleanup automation
 - Prune older registry snapshots while keeping the newest N ids with explicit force confirmation
 - Preview delete and prune lifecycle operations with dry-run mode before changing disk state
 - Emit structured lifecycle audit metadata for delete and prune operations
