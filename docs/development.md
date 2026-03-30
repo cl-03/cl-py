@@ -172,6 +172,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - `store delete-registry` also accepts `--created-after` so time-window cleanup can be expressed as native lower/upper ISO timestamp bounds
 - Lifecycle delete/prune responses now also include before/after snapshot totals so callers can measure current and projected cleanup impact without recomputing store state
 - Delete responses now also include selector match breakdowns so callers can distinguish explicit, prefix, and time-window matches in preview and execution flows
+- Those selector breakdowns also include per-source count fields so callers can consume match totals without re-counting JSON arrays
 - Report and diff-report payloads now include per-row-set pagination objects so callers can track total, returned, and remaining rows after offset/limit are applied
 
 ## Native Concurrency Runner

@@ -152,6 +152,8 @@ Lifecycle cleanup responses now also expose `before-count`, `after-count`, and `
 so scripts can compare actual and projected snapshot totals directly.
 Delete responses also expose a `matched` object so scripts can distinguish explicit id matches,
 prefix matches, and time-window matches.
+That object now also includes `explicit-count`, `prefix-count`, and `created-window-count`
+for callers that only need per-source totals.
 
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.

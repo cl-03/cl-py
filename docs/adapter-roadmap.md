@@ -202,7 +202,7 @@ Current status:
   per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export,
   per-result pagination metadata, aggregate report diffs, snapshot deletion, snapshot pruning,
   lifecycle dry-run previews, explicit force confirmation for destructive cleanup, and
-  structured lifecycle audit metadata, selector match breakdowns, and before/after count summaries in cleanup responses, including batched, prefix-selected, and time-window-selected snapshot deletion.
+  structured lifecycle audit metadata, selector match breakdowns with per-source counts, and before/after count summaries in cleanup responses, including batched, prefix-selected, and time-window-selected snapshot deletion.
 - This does not replace the broader database-backed roadmap. It reduces risk by establishing local
   persistence contracts and snapshot query flows before introducing a heavier storage dependency.
 
