@@ -156,6 +156,62 @@ That object now also includes `explicit-count`, `prefix-count`, and `created-win
 for callers that only need per-source totals.
 It also includes `total-matched-count`, which is deduplicated across all selector sources.
 
+Example dry-run response for a mixed selector request such as:
+
+```sh
+sbcl --script scripts/dev-cli.lisp store delete-registry nightly-20260329 --prefix nightly- --created-after 2026-03-29T12:00:00Z --created-before 2026-03-31T00:00:00Z --dry-run
+```
+
+```json
+{
+	"deleted": false,
+	"dry-run": true,
+	"forced": false,
+	"would-delete": true,
+	"before-count": 7,
+	"after-count": 7,
+	"would-after-count": 4,
+	"deleted-count": 3,
+	"snapshot-ids": [
+		"nightly-20260329",
+		"nightly-20260330",
+		"nightly-20260330-hotfix"
+	],
+	"prefixes": [
+		"nightly-"
+	],
+	"created-before": "2026-03-31T00:00:00Z",
+	"created-after": "2026-03-29T12:00:00Z",
+	"matched": {
+		"explicit-snapshot-ids": [
+			"nightly-20260329"
+		],
+		"explicit-count": 1,
+		"prefix-snapshot-ids": [
+			"nightly-20260329",
+			"nightly-20260330",
+			"nightly-20260330-hotfix"
+		],
+		"prefix-count": 3,
+		"created-window-snapshot-ids": [
+			"nightly-20260330"
+		],
+		"created-window-count": 1,
+		"total-matched-count": 3
+	},
+	"audit": {
+		"operation": "delete-registry",
+		"mode": "dry-run",
+		"executed-at": "2026-03-30T11:42:15Z",
+		"store-root": ".cl-py-store"
+	}
+}
+```
+
+In that example, `1 + 3 + 1 != total-matched-count` because the same snapshot can be matched by
+more than one selector source. `total-matched-count` reflects the deduplicated set that would
+actually be affected by the delete request.
+
 The `jobs demo-batch` command emits structured JSON results and is the current CLI entry for the
 native bounded task runner.
 
