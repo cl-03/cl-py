@@ -57,6 +57,8 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store inventory-registry --limit 5
+sbcl --script scripts/dev-cli.lisp store inventory-registry --prefix nightly- --created-after 2026-03-29T12:00:00Z
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run
@@ -138,6 +140,11 @@ aggregate report diffs, exclusion filters, group-selected output, row limits, of
 absolute-delta sorting, per-group sort overrides, per-group paging overrides, file export,
 per-result pagination metadata such as total, returned, and remaining row counts, plus lifecycle
 operations for deleting snapshots and pruning older snapshots while keeping the newest N entries.
+For a lighter-weight browsing query, `store inventory-registry` returns paged snapshot metadata
+rows with `snapshot-id`, `created-at`, `adapter-count`, a `filters` object, a matched-set `summary`
+object, the applied `sort` mode, and a shared `snapshot-page` object. It also accepts repeated `--prefix <text>` selectors,
+`--created-before` / `--created-after`, `--adapter-count-min` / `--adapter-count-max`, and `--sort <created-at-desc|created-at-asc|snapshot-id-asc|snapshot-id-desc|adapter-count-asc|adapter-count-desc>`
+so snapshot browsing can be narrowed or re-ordered without loading full payloads.
 Use `--dry-run` on delete/prune commands to preview changes without modifying the store, and
 use `--force` to execute the actual destructive operation.
 Lifecycle delete/prune JSON responses also include an `audit` object with the operation name,

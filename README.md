@@ -121,6 +121,10 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store inventory-registry --limit 5
+sbcl --script scripts/dev-cli.lisp store inventory-registry --prefix nightly- --created-after 2026-03-29T12:00:00Z
+sbcl --script scripts/dev-cli.lisp store inventory-registry --adapter-count-min 3 --sort adapter-count-desc
+sbcl --script scripts/dev-cli.lisp store inventory-registry --sort adapter-count-desc --limit 5
 sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
 sbcl --script scripts/dev-cli.lisp packaging metadata
 sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
@@ -154,6 +158,11 @@ Native command help also includes input-form guidance and runnable examples, so 
 
 The native store layer persists registry snapshots under `.cl-py-store/registry/` by default.
 Set `CL_PY_STORE_DIR` to redirect snapshot storage elsewhere.
+
+The store query layer also includes a paged snapshot inventory through
+`inventory-registry-snapshots` and `store inventory-registry [--prefix <text> ...] [--created-before <timestamp>] [--created-after <timestamp>] [--adapter-count-min <n>] [--adapter-count-max <n>] [--sort <created-at-desc|created-at-asc|snapshot-id-asc|snapshot-id-desc|adapter-count-asc|adapter-count-desc>] [--offset <n>] [--limit <n>]`,
+returning per-snapshot `snapshot-id`, `created-at`, `adapter-count`, a `filters` object, a matched-set `summary` object, the applied `sort` mode, and shared pagination
+metadata for browsing stored snapshots without loading full payloads.
 
 For lifecycle cleanup responses, the recommended stable contract is now the structured `summary`,
 `matched` including `matched.request`, and `audit` sub-objects; mirrored top-level count and

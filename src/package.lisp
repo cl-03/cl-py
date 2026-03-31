@@ -28,6 +28,7 @@
    #:fetch-json
    #:save-registry-snapshot
    #:list-registry-snapshots
+  #:inventory-registry-snapshots
    #:load-registry-snapshot
   #:delete-registry-snapshot
   #:delete-registry-snapshots

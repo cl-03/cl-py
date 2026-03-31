@@ -112,6 +112,10 @@ Useful commands:
 sbcl --script scripts/dev-cli.lisp registry
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp store inventory-registry --limit 5
+sbcl --script scripts/dev-cli.lisp store inventory-registry --prefix nightly- --created-after 2026-03-29T12:00:00Z
+sbcl --script scripts/dev-cli.lisp store inventory-registry --adapter-count-min 3 --sort adapter-count-desc
+sbcl --script scripts/dev-cli.lisp store inventory-registry --sort adapter-count-desc --limit 5
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force
 sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run
 sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run
@@ -164,6 +168,7 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Snapshots are written as canonical JSON for easy inspection and reuse
 - The current first slice is intentionally small and focused on registry persistence
 - Query helpers now cover latest snapshot lookup, summary output, snapshot diffs, adapter history, aggregate reports, repeated filter flags, exclusion filters, group-selected output, row sorting, row offsets, row limits, per-group sort overrides, per-group paging overrides, absolute-delta sorting, file export, aggregate report diffs, snapshot deletion, and snapshot pruning
+- Query helpers now also include a paged snapshot inventory view with optional prefix, creation-window, adapter-count range, and sort controls for browsing stored snapshots by `snapshot-id`, `created-at`, and `adapter-count` before loading full payloads, while also returning a matched-set summary object for quick inventory overviews
 - Delete/prune lifecycle commands require `--force` for destructive execution and support `--dry-run` so cleanup plans can be inspected before any files are removed
 - Lifecycle delete/prune responses now include structured `audit` metadata with operation, mode, execution time, and store root information
 - `store delete-registry` can remove multiple snapshot ids in one call, with the same `--force` and `--dry-run` safety model

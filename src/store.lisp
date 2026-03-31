@@ -223,13 +223,9 @@
             (cons field-name (%object-field summary field-name)))
           field-names))
 
-(defun %lifecycle-delete-legacy-fields (summary)
+(defun %lifecycle-legacy-fields (summary field-names)
   (append (%lifecycle-legacy-count-fields summary)
-          (%summary-derived-fields summary '("deleted-count"))))
-
-(defun %lifecycle-prune-legacy-fields (summary)
-  (append (%lifecycle-legacy-count-fields summary)
-          (%summary-derived-fields summary '("keep-count" "kept-count" "deleted-count"))))
+          (%summary-derived-fields summary field-names)))
 
 (defun %lifecycle-prune-partition-fields (matched)
   (list (cons "kept-count" (%object-field matched "kept-count"))
@@ -310,7 +306,7 @@
 (defun %lifecycle-delete-response-object (base-fields summary matched audit &key pre-matched-fields post-matched-fields trailing-fields)
   (%lifecycle-response-object
    base-fields
-   (append (%lifecycle-delete-legacy-fields summary)
+   (append (%lifecycle-legacy-fields summary '("deleted-count"))
            (%lifecycle-delete-selector-legacy-fields matched))
    summary
    matched
@@ -322,7 +318,7 @@
 (defun %lifecycle-prune-response-object (base-fields summary matched audit)
   (%lifecycle-response-object
    base-fields
-   (append (%lifecycle-prune-legacy-fields summary)
+   (append (%lifecycle-legacy-fields summary '("keep-count" "kept-count" "deleted-count"))
            (%lifecycle-prune-legacy-id-fields matched))
    summary
    matched
@@ -640,6 +636,20 @@
      #'%print-store-usage))
   sort-mode)
 
+(defun %validate-inventory-sort-mode (sort-mode command-name)
+  (unless (member sort-mode '("created-at-desc"
+                              "created-at-asc"
+                              "snapshot-id-asc"
+                              "snapshot-id-desc"
+                              "adapter-count-asc"
+                              "adapter-count-desc")
+                  :test #'string=)
+    (cl-py.internal:signal-cli-usage-error
+     (format nil "~A requires --sort to be one of: created-at-desc, created-at-asc, snapshot-id-asc, snapshot-id-desc, adapter-count-asc, adapter-count-desc"
+             command-name)
+     #'%print-store-usage))
+  sort-mode)
+
 (defun %validate-report-limit (limit command-name)
   (unless (and (integerp limit) (>= limit 0))
     (cl-py.internal:signal-cli-usage-error
@@ -801,6 +811,91 @@
     (if output-path
         (format t "~A~%" (namestring (%write-output-file output-path payload)))
         (format t "~A~%" payload))))
+
+(defun %parse-inventory-registry-args (args)
+  (let ((offset nil)
+        (limit nil)
+        (prefixes nil)
+        (created-before nil)
+        (created-after nil)
+        (adapter-count-min nil)
+        (adapter-count-max nil)
+        (sort-mode "created-at-desc")
+        (output-path nil))
+    (loop while args
+          for argument = (pop args)
+          do (cond
+               ((string= argument "--prefix")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --prefix"
+                   #'%print-store-usage))
+                (push (pop args) prefixes))
+               ((string= argument "--created-before")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --created-before"
+                   #'%print-store-usage))
+                (setf created-before (pop args)))
+               ((string= argument "--created-after")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --created-after"
+                   #'%print-store-usage))
+                (setf created-after (pop args)))
+               ((string= argument "--adapter-count-min")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --adapter-count-min"
+                   #'%print-store-usage))
+                (setf adapter-count-min (%parse-non-negative-integer (pop args) "store inventory-registry")))
+               ((string= argument "--adapter-count-max")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --adapter-count-max"
+                   #'%print-store-usage))
+                (setf adapter-count-max (%parse-non-negative-integer (pop args) "store inventory-registry")))
+               ((string= argument "--sort")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --sort"
+                   #'%print-store-usage))
+                (setf sort-mode (%validate-inventory-sort-mode (pop args) "store inventory-registry")))
+               ((string= argument "--offset")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --offset"
+                   #'%print-store-usage))
+                (setf offset (%parse-non-negative-integer (pop args) "store inventory-registry")))
+               ((string= argument "--limit")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --limit"
+                   #'%print-store-usage))
+                (setf limit (%parse-non-negative-integer (pop args) "store inventory-registry")))
+               ((string= argument "--output")
+                (unless args
+                  (cl-py.internal:signal-cli-usage-error
+                   "store inventory-registry requires a value after --output"
+                   #'%print-store-usage))
+                (setf output-path (pop args)))
+               (t
+                (cl-py.internal:signal-cli-usage-error
+                 "store inventory-registry accepts only --prefix, --created-before, --created-after, --adapter-count-min, --adapter-count-max, --sort, --offset, --limit, and --output"
+                 #'%print-store-usage))))
+       (when (and adapter-count-min adapter-count-max (> adapter-count-min adapter-count-max))
+        (cl-py.internal:signal-cli-usage-error
+         "store inventory-registry requires --adapter-count-min to be less than or equal to --adapter-count-max"
+         #'%print-store-usage))
+       (values (%normalize-filter-values (nreverse prefixes))
+            created-before
+            created-after
+            adapter-count-min
+            adapter-count-max
+            sort-mode
+            offset
+            limit
+            output-path)))
 
 (defun %counts-vector-table (entries)
   (let ((table (make-hash-table :test #'equal)))
@@ -1124,6 +1219,153 @@
           (cons "adapter-count" (%snapshot-entry snapshot "adapter-count"))
           (cons "adapter-ids" (coerce adapter-ids 'vector)))))
 
+(defun %snapshot-inventory-entry (snapshot-id &key directory)
+  (let ((summary (summarize-registry-snapshot snapshot-id :directory directory)))
+    (list :object
+          (cons "snapshot-id" (%snapshot-entry summary "snapshot-id"))
+          (cons "created-at" (%snapshot-entry summary "created-at"))
+          (cons "adapter-count" (%snapshot-entry summary "adapter-count")))))
+
+(defun %inventory-entry-snapshot-id (entry)
+  (%snapshot-entry entry "snapshot-id"))
+
+(defun %inventory-entry-created-at (entry)
+  (%snapshot-entry entry "created-at"))
+
+(defun %inventory-entry-created-at-universal-time (entry)
+  (%timestamp-universal-time (parse-iso-timestamp (%inventory-entry-created-at entry))))
+
+(defun %inventory-entry-adapter-count (entry)
+  (%snapshot-entry entry "adapter-count"))
+
+(defun %inventory-summary-object (rows)
+  (if (null rows)
+  (list :object
+    (cons "matched-count" 0)
+    (cons "oldest-created-at" :null)
+    (cons "newest-created-at" :null)
+    (cons "min-adapter-count" :null)
+    (cons "max-adapter-count" :null))
+  (let* ((oldest-entry (reduce (lambda (left right)
+             (if (< (%inventory-entry-created-at-universal-time left)
+                (%inventory-entry-created-at-universal-time right))
+                 left
+                 right))
+               rows))
+     (newest-entry (reduce (lambda (left right)
+             (if (> (%inventory-entry-created-at-universal-time left)
+                (%inventory-entry-created-at-universal-time right))
+                 left
+                 right))
+               rows))
+     (min-adapter-count (reduce #'min rows :key #'%inventory-entry-adapter-count))
+     (max-adapter-count (reduce #'max rows :key #'%inventory-entry-adapter-count)))
+    (list :object
+      (cons "matched-count" (length rows))
+      (cons "oldest-created-at" (%inventory-entry-created-at oldest-entry))
+      (cons "newest-created-at" (%inventory-entry-created-at newest-entry))
+      (cons "min-adapter-count" min-adapter-count)
+      (cons "max-adapter-count" max-adapter-count)))))
+
+(defun %sort-inventory-rows (rows sort-mode)
+  (sort (copy-list rows)
+        (cond
+          ((string= sort-mode "created-at-asc")
+           (lambda (left right)
+             (or (< (%inventory-entry-created-at-universal-time left)
+                    (%inventory-entry-created-at-universal-time right))
+                 (and (= (%inventory-entry-created-at-universal-time left)
+                         (%inventory-entry-created-at-universal-time right))
+                      (string< (%inventory-entry-snapshot-id left)
+                               (%inventory-entry-snapshot-id right))))))
+          ((string= sort-mode "snapshot-id-asc")
+           (lambda (left right)
+             (string< (%inventory-entry-snapshot-id left)
+                      (%inventory-entry-snapshot-id right))))
+          ((string= sort-mode "snapshot-id-desc")
+           (lambda (left right)
+             (string> (%inventory-entry-snapshot-id left)
+                      (%inventory-entry-snapshot-id right))))
+          ((string= sort-mode "adapter-count-asc")
+           (lambda (left right)
+             (or (< (%inventory-entry-adapter-count left)
+                    (%inventory-entry-adapter-count right))
+                 (and (= (%inventory-entry-adapter-count left)
+                         (%inventory-entry-adapter-count right))
+                      (string< (%inventory-entry-snapshot-id left)
+                               (%inventory-entry-snapshot-id right))))))
+          ((string= sort-mode "adapter-count-desc")
+           (lambda (left right)
+             (or (> (%inventory-entry-adapter-count left)
+                    (%inventory-entry-adapter-count right))
+                 (and (= (%inventory-entry-adapter-count left)
+                         (%inventory-entry-adapter-count right))
+                      (string< (%inventory-entry-snapshot-id left)
+                               (%inventory-entry-snapshot-id right))))))
+          (t
+           (lambda (left right)
+             (or (> (%inventory-entry-created-at-universal-time left)
+                    (%inventory-entry-created-at-universal-time right))
+                 (and (= (%inventory-entry-created-at-universal-time left)
+                         (%inventory-entry-created-at-universal-time right))
+                      (string< (%inventory-entry-snapshot-id left)
+                               (%inventory-entry-snapshot-id right)))))))))
+
+(defun %inventory-filter-object (prefixes created-before created-after adapter-count-min adapter-count-max)
+  (let ((resolved-prefixes (%normalize-filter-values prefixes)))
+    (list :object
+          (cons "prefixes" (coerce resolved-prefixes 'vector))
+          (cons "prefix-count" (length resolved-prefixes))
+          (cons "created-before" (or created-before :null))
+          (cons "created-after" (or created-after :null))
+          (cons "adapter-count-min" (or adapter-count-min :null))
+          (cons "adapter-count-max" (or adapter-count-max :null)))))
+
+(defun %inventory-entry-matches-adapter-count-range-p (entry adapter-count-min adapter-count-max)
+  (let ((adapter-count (%inventory-entry-adapter-count entry)))
+    (and (or (null adapter-count-min)
+             (>= adapter-count adapter-count-min))
+         (or (null adapter-count-max)
+             (<= adapter-count adapter-count-max)))))
+
+(defun %inventory-filtered-snapshot-ids (directory prefixes created-before created-after)
+  (let* ((resolved-prefixes (%normalize-filter-values prefixes))
+         (prefix-snapshot-ids (%snapshot-ids-matching-prefixes resolved-prefixes directory))
+         (created-window-snapshot-ids (%snapshot-ids-created-within-window directory created-before created-after)))
+    (cond
+      ((and resolved-prefixes (or created-before created-after))
+       (loop for snapshot-id in prefix-snapshot-ids
+             when (member snapshot-id created-window-snapshot-ids :test #'string=)
+             collect snapshot-id))
+      (resolved-prefixes prefix-snapshot-ids)
+      ((or created-before created-after) created-window-snapshot-ids)
+      (t (list-registry-snapshots :directory directory)))))
+
+(defun inventory-registry-snapshots (&key directory offset limit prefixes created-before created-after adapter-count-min adapter-count-max (sort "created-at-desc"))
+  (%validate-inventory-sort-mode sort "inventory-registry-snapshots")
+  (when limit
+    (%validate-report-limit limit "inventory-registry-snapshots"))
+  (when offset
+    (%validate-report-limit offset "inventory-registry-snapshots"))
+  (when (and adapter-count-min adapter-count-max (> adapter-count-min adapter-count-max))
+    (cl-py.internal:signal-cli-usage-error
+     "inventory-registry-snapshots requires :adapter-count-min to be less than or equal to :adapter-count-max"
+     #'%print-store-usage))
+  (let* ((matching-rows (remove-if-not (lambda (entry)
+                                         (%inventory-entry-matches-adapter-count-range-p entry adapter-count-min adapter-count-max))
+                                       (mapcar (lambda (snapshot-id)
+                                                 (%snapshot-inventory-entry snapshot-id :directory directory))
+                                               (%inventory-filtered-snapshot-ids directory prefixes created-before created-after))))
+         (rows (%sort-inventory-rows matching-rows sort)))
+    (multiple-value-bind (paged-rows page)
+        (%paginate-rows rows offset limit)
+      (list :object
+            (cons "filters" (%inventory-filter-object prefixes created-before created-after adapter-count-min adapter-count-max))
+            (cons "summary" (%inventory-summary-object matching-rows))
+            (cons "sort" sort)
+            (cons "snapshot-page" page)
+            (cons "snapshots" (coerce paged-rows 'vector))))))
+
 (defun report-registry-snapshot (snapshot-id &key directory license capability licenses capabilities exclude-license exclude-capability exclude-licenses exclude-capabilities group groups (sort "name") license-sort capability-sort limit offset license-limit license-offset capability-limit capability-offset)
   (let* ((snapshot (load-registry-snapshot snapshot-id :directory directory))
          (effective-licenses (%effective-filter-values license licenses))
@@ -1321,6 +1563,7 @@
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
+  (format t "  store inventory-registry [--prefix <text> ...] [--created-before <timestamp>] [--created-after <timestamp>] [--adapter-count-min <n>] [--adapter-count-max <n>] [--sort <created-at-desc|created-at-asc|snapshot-id-asc|snapshot-id-desc|adapter-count-asc|adapter-count-desc>] [--offset <n>] [--limit <n>] [--output <path>]~%")
   (format t "  store delete-registry <snapshot-id> [<snapshot-id> ...] [--prefix <text> ...] [--created-before <timestamp>] [--created-after <timestamp>] (--dry-run | --force)~%")
   (format t "  store prune-registry <keep-count> (--dry-run | --force)~%")
   (format t "  store show-registry <snapshot-id>~%")
@@ -1340,6 +1583,10 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store snapshot-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store list-registry~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store inventory-registry --limit 5~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store inventory-registry --prefix nightly- --created-after 2026-03-29T12:00:00Z~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store inventory-registry --adapter-count-min 3 --sort adapter-count-desc~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store inventory-registry --sort adapter-count-desc --limit 5~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly --force~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry nightly snapshot-20260330 --dry-run~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store delete-registry --prefix nightly- --dry-run~%")
@@ -1388,6 +1635,20 @@
 (defun %store-cli-list-registry ()
   (dolist (snapshot-id (list-registry-snapshots))
     (format t "~A~%" snapshot-id)))
+
+(defun %store-cli-inventory-registry (args)
+  (multiple-value-bind (prefixes created-before created-after adapter-count-min adapter-count-max sort-mode offset limit output-path)
+      (%parse-inventory-registry-args args)
+    (%emit-cli-json-output
+     (inventory-registry-snapshots :prefixes prefixes
+                                   :created-before created-before
+                                   :created-after created-after
+                                   :adapter-count-min adapter-count-min
+                                   :adapter-count-max adapter-count-max
+                                   :sort sort-mode
+                                   :offset offset
+                                   :limit limit)
+     :output-path output-path)))
 
 (defun %store-cli-delete-registry (args)
   (multiple-value-bind (snapshot-ids prefixes created-before created-after dry-run force)
@@ -1481,6 +1742,8 @@
           "store list-registry does not accept positional arguments"
           #'%print-store-usage)
          (%store-cli-list-registry)))
+    ((string= (first args) "inventory-registry")
+     (%store-cli-inventory-registry (rest args)))
     ((string= (first args) "delete-registry")
      (%store-cli-delete-registry (rest args)))
     ((string= (first args) "prune-registry")
