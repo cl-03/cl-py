@@ -163,6 +163,7 @@ The store query layer also includes a paged snapshot inventory through
 `inventory-registry-snapshots` and `store inventory-registry [--prefix <text> ...] [--created-before <timestamp>] [--created-after <timestamp>] [--adapter-count-min <n>] [--adapter-count-max <n>] [--sort <created-at-desc|created-at-asc|snapshot-id-asc|snapshot-id-desc|adapter-count-asc|adapter-count-desc>] [--offset <n>] [--limit <n>]`,
 returning per-snapshot `snapshot-id`, `created-at`, `adapter-count`, a `filters` object, a matched-set `summary` object, the applied `sort` mode, and shared pagination
 metadata for browsing stored snapshots without loading full payloads.
+That `summary` object includes matched counts plus oldest/newest snapshot ids, oldest/newest snapshot row objects, timestamps, and adapter-count bounds for the full filtered result set before pagination.
 
 For lifecycle cleanup responses, the recommended stable contract is now the structured `summary`,
 `matched` including `matched.request`, and `audit` sub-objects; mirrored top-level count and

@@ -1242,7 +1242,11 @@
   (if (null rows)
   (list :object
     (cons "matched-count" 0)
+    (cons "oldest-snapshot-id" :null)
+    (cons "oldest-snapshot" :null)
     (cons "oldest-created-at" :null)
+    (cons "newest-snapshot-id" :null)
+    (cons "newest-snapshot" :null)
     (cons "newest-created-at" :null)
     (cons "min-adapter-count" :null)
     (cons "max-adapter-count" :null))
@@ -1262,7 +1266,11 @@
      (max-adapter-count (reduce #'max rows :key #'%inventory-entry-adapter-count)))
     (list :object
       (cons "matched-count" (length rows))
+      (cons "oldest-snapshot-id" (%inventory-entry-snapshot-id oldest-entry))
+      (cons "oldest-snapshot" oldest-entry)
       (cons "oldest-created-at" (%inventory-entry-created-at oldest-entry))
+      (cons "newest-snapshot-id" (%inventory-entry-snapshot-id newest-entry))
+      (cons "newest-snapshot" newest-entry)
       (cons "newest-created-at" (%inventory-entry-created-at newest-entry))
       (cons "min-adapter-count" min-adapter-count)
       (cons "max-adapter-count" max-adapter-count)))))
