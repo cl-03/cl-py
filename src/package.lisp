@@ -41,9 +41,9 @@
    #:diff-registry-snapshot-reports
    #:run-bounded-task-batch
    #:normalize-packaging-version
-     #:parse-dateutil-isodatetime
-     #:slugify-text
-    #:validate-jsonschema-instance
+    #:parse-dateutil-isodatetime
+    #:slugify-text
+   #:validate-jsonschema-instance
    #:main))
 
 (defpackage #:cl-py.internal
@@ -77,4 +77,13 @@
    #:print-cli-usage
   #:print-command-help
   #:signal-cli-usage-error
-   #:string-join))
+   #:string-join
+   ;; CLI utility exports
+   #:parse-non-negative-integer
+   #:validate-sort-mode
+   #:validate-inventory-sort-mode
+   #:parse-keep-count
+   #:parse-flag
+   #:parse-option
+   #:parse-repeatable-option
+   #:parse-required-option))

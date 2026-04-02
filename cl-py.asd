@@ -11,6 +11,7 @@
                (:file "src/manifest")
                (:file "src/registry")
                (:file "src/adapter")
+               (:file "src/cli-util")
                (:file "src/json")
                (:file "src/time")
                (:file "src/uri-http")
