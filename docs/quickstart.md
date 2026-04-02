@@ -145,8 +145,8 @@ rows with `snapshot-id`, `created-at`, `adapter-count`, a `filters` object, a ma
 object, the applied `sort` mode, and a shared `snapshot-page` object. It also accepts repeated `--prefix <text>` selectors,
 `--created-before` / `--created-after`, `--adapter-count-min` / `--adapter-count-max`, and `--sort <created-at-desc|created-at-asc|snapshot-id-asc|snapshot-id-desc|adapter-count-asc|adapter-count-desc>`
 so snapshot browsing can be narrowed or re-ordered without loading full payloads.
-The matched-set `summary` reports oldest/newest snapshot ids and timestamps plus min/max adapter counts for the full filtered set before any `--offset` or `--limit` is applied.
-It also includes `oldest-snapshot` and `newest-snapshot` row objects so callers can inspect those boundary entries without scanning the `snapshots` page.
+The matched-set `summary` reports total store snapshots, selector-stage matches, adapter-count filtered-out count, oldest/newest snapshot ids and timestamps, total adapter count, adapter-count span, and min/max adapter counts for the full filtered set before any `--offset` or `--limit` is applied.
+It also includes `oldest-snapshot`, `newest-snapshot`, `smallest-snapshot`, and `largest-snapshot` row objects so callers can inspect those boundary entries without scanning the `snapshots` page.
 Use `--dry-run` on delete/prune commands to preview changes without modifying the store, and
 use `--force` to execute the actual destructive operation.
 Lifecycle delete/prune JSON responses also include an `audit` object with the operation name,

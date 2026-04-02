@@ -171,6 +171,9 @@ The native store layer writes registry snapshots under `.cl-py-store/registry/` 
 - Query helpers now also include a paged snapshot inventory view with optional prefix, creation-window, adapter-count range, and sort controls for browsing stored snapshots by `snapshot-id`, `created-at`, and `adapter-count` before loading full payloads, while also returning a matched-set summary object for quick inventory overviews
 - The inventory matched-set summary now also includes oldest/newest snapshot ids alongside timestamp and adapter-count bounds, so callers can identify boundary snapshots without scanning result rows
 - The inventory matched-set summary now also includes oldest/newest snapshot row objects, so callers can inspect boundary entries directly without issuing a second lookup
+- The inventory matched-set summary now also includes smallest/largest snapshot ids and row objects keyed by adapter-count boundaries, so callers can inspect size extremes directly from the inventory response
+- The inventory matched-set summary now also includes total adapter count and adapter-count span for the filtered set, so callers can consume aggregate size statistics without scanning rows client-side
+- The inventory matched-set summary now also distinguishes total store snapshot count, selector-stage matches, and adapter-count filtered-out rows, so clients can see which filtering stage reduced the result set
 - Delete/prune lifecycle commands require `--force` for destructive execution and support `--dry-run` so cleanup plans can be inspected before any files are removed
 - Lifecycle delete/prune responses now include structured `audit` metadata with operation, mode, execution time, and store root information
 - `store delete-registry` can remove multiple snapshot ids in one call, with the same `--force` and `--dry-run` safety model
