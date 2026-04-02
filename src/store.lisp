@@ -665,41 +665,39 @@
   (%parse-non-negative-integer text command-name))
 
 (defun %parse-store-delete-registry-args (args)
+  "Parse arguments for store delete-registry command.
+  Uses reusable CLI parsing utilities from cli-util.lisp."
   (let ((snapshot-ids nil)
-    (prefixes nil)
-      (created-before nil)
-      (created-after nil)
+        (prefixes nil)
+        (created-before nil)
+        (created-after nil)
         (dry-run nil)
         (force nil))
-    (loop while args
-          for argument = (pop args)
-          do (cond
-               ((string= argument "--dry-run")
-                (setf dry-run t))
-               ((string= argument "--force")
-                (setf force t))
-              ((string= argument "--prefix")
-               (unless args
-                (cl-py.internal:signal-cli-usage-error
-                 "store delete-registry requires a value after --prefix"
-                 #'%print-store-usage))
-               (push (pop args) prefixes))
-               ((string= argument "--created-before")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store delete-registry requires a value after --created-before"
-                   #'%print-store-usage))
-                (setf created-before (pop args))
-                (parse-iso-timestamp created-before))
-               ((string= argument "--created-after")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store delete-registry requires a value after --created-after"
-                   #'%print-store-usage))
-                (setf created-after (pop args))
-                (parse-iso-timestamp created-after))
-              (t
-               (push argument snapshot-ids))))
+    ;; Parse flags
+    (setf args (multiple-value-bind (new-args val) (cl-py.internal:%parse-flag args "--dry-run")
+                 (setf dry-run val)
+                 new-args))
+    (setf args (multiple-value-bind (new-args val) (cl-py.internal:%parse-flag args "--force")
+                 (setf force val)
+                 new-args))
+    ;; Parse repeatable options
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--prefix")
+                 (setf prefixes vals)
+                 new-args))
+    ;; Parse single-value options
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--created-before")
+      (setf args new-args)
+      (when val
+        (setf created-before val)
+        (parse-iso-timestamp created-before)))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--created-after")
+      (setf args new-args)
+      (when val
+        (setf created-after val)
+        (parse-iso-timestamp created-after)))
+    ;; Remaining args are snapshot ids
+    (setf snapshot-ids args)
+    ;; Validate
     (unless (or snapshot-ids prefixes created-before created-after)
       (cl-py.internal:signal-cli-usage-error
        "store delete-registry requires at least one snapshot id or selector"
@@ -712,7 +710,7 @@
       (cl-py.internal:signal-cli-usage-error
        "store delete-registry requires --dry-run or --force"
        #'%print-store-usage))
-       (values (nreverse snapshot-ids)
+    (values (nreverse snapshot-ids)
             (%normalize-filter-values (nreverse prefixes))
             created-before
             created-after
@@ -720,22 +718,31 @@
             force)))
 
 (defun %parse-store-prune-registry-args (args)
+  "Parse arguments for store prune-registry command.
+  Uses reusable CLI parsing utilities from cli-util.lisp."
   (let ((keep-count nil)
         (dry-run nil)
         (force nil))
-    (loop while args
-          for argument = (pop args)
-          do (cond
-               ((string= argument "--dry-run")
-                (setf dry-run t))
-               ((string= argument "--force")
-                (setf force t))
-               ((null keep-count)
-                (setf keep-count (%parse-keep-count argument "store prune-registry")))
-               (t
-                (cl-py.internal:signal-cli-usage-error
-                 "store prune-registry requires exactly one keep count and one of --dry-run or --force"
-                 #'%print-store-usage))))
+    ;; Parse flags
+    (setf args (multiple-value-bind (new-args val) (cl-py.internal:%parse-flag args "--dry-run")
+                 (setf dry-run val)
+                 new-args))
+    (setf args (multiple-value-bind (new-args val) (cl-py.internal:%parse-flag args "--force")
+                 (setf force val)
+                 new-args))
+    ;; First remaining arg is keep-count
+    (if (null args)
+        (cl-py.internal:signal-cli-usage-error
+         "store prune-registry requires a keep count"
+         #'%print-store-usage)
+        (setf keep-count (cl-py.internal:parse-keep-count (first args) "store prune-registry")))
+    (setf args (rest args))
+    ;; No extra args allowed
+    (when args
+      (cl-py.internal:signal-cli-usage-error
+       "store prune-registry requires exactly one keep count and one of --dry-run or --force"
+       #'%print-store-usage))
+    ;; Validate
     (unless keep-count
       (cl-py.internal:signal-cli-usage-error
        "store prune-registry requires a keep count"
@@ -813,6 +820,8 @@
         (format t "~A~%" payload))))
 
 (defun %parse-inventory-registry-args (args)
+  "Parse arguments for store inventory-registry command.
+  Uses reusable CLI parsing utilities from cli-util.lisp."
   (let ((offset nil)
         (limit nil)
         (prefixes nil)
@@ -822,72 +831,51 @@
         (adapter-count-max nil)
         (sort-mode "created-at-desc")
         (output-path nil))
-    (loop while args
-          for argument = (pop args)
-          do (cond
-               ((string= argument "--prefix")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --prefix"
-                   #'%print-store-usage))
-                (push (pop args) prefixes))
-               ((string= argument "--created-before")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --created-before"
-                   #'%print-store-usage))
-                (setf created-before (pop args)))
-               ((string= argument "--created-after")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --created-after"
-                   #'%print-store-usage))
-                (setf created-after (pop args)))
-               ((string= argument "--adapter-count-min")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --adapter-count-min"
-                   #'%print-store-usage))
-                (setf adapter-count-min (%parse-non-negative-integer (pop args) "store inventory-registry")))
-               ((string= argument "--adapter-count-max")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --adapter-count-max"
-                   #'%print-store-usage))
-                (setf adapter-count-max (%parse-non-negative-integer (pop args) "store inventory-registry")))
-               ((string= argument "--sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --sort"
-                   #'%print-store-usage))
-                (setf sort-mode (%validate-inventory-sort-mode (pop args) "store inventory-registry")))
-               ((string= argument "--offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --offset"
-                   #'%print-store-usage))
-                (setf offset (%parse-non-negative-integer (pop args) "store inventory-registry")))
-               ((string= argument "--limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --limit"
-                   #'%print-store-usage))
-                (setf limit (%parse-non-negative-integer (pop args) "store inventory-registry")))
-               ((string= argument "--output")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store inventory-registry requires a value after --output"
-                   #'%print-store-usage))
-                (setf output-path (pop args)))
-               (t
-                (cl-py.internal:signal-cli-usage-error
-                 "store inventory-registry accepts only --prefix, --created-before, --created-after, --adapter-count-min, --adapter-count-max, --sort, --offset, --limit, and --output"
-                 #'%print-store-usage))))
-       (when (and adapter-count-min adapter-count-max (> adapter-count-min adapter-count-max))
-        (cl-py.internal:signal-cli-usage-error
-         "store inventory-registry requires --adapter-count-min to be less than or equal to --adapter-count-max"
-         #'%print-store-usage))
-       (values (%normalize-filter-values (nreverse prefixes))
+    ;; Parse repeatable options
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--prefix")
+                 (setf prefixes vals)
+                 new-args))
+    ;; Parse single-value options
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--created-before")
+      (setf args new-args)
+      (when val (setf created-before val)))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--created-after")
+      (setf args new-args)
+      (when val (setf created-after val)))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--adapter-count-min")
+      (setf args new-args)
+      (when val
+        (setf adapter-count-min (%parse-non-negative-integer val "store inventory-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--adapter-count-max")
+      (setf args new-args)
+      (when val
+        (setf adapter-count-max (%parse-non-negative-integer val "store inventory-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--sort")
+      (setf args new-args)
+      (when val
+        (setf sort-mode (%validate-inventory-sort-mode val "store inventory-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--offset")
+      (setf args new-args)
+      (when val
+        (setf offset (%parse-non-negative-integer val "store inventory-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--limit")
+      (setf args new-args)
+      (when val
+        (setf limit (%parse-non-negative-integer val "store inventory-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--output")
+      (setf args new-args)
+      (when val (setf output-path val)))
+    ;; No positional args allowed
+    (when args
+      (cl-py.internal:signal-cli-usage-error
+       "store inventory-registry accepts only --prefix, --created-before, --created-after, --adapter-count-min, --adapter-count-max, --sort, --offset, --limit, and --output"
+       #'%print-store-usage))
+    ;; Validate adapter-count range
+    (when (and adapter-count-min adapter-count-max (> adapter-count-min adapter-count-max))
+      (cl-py.internal:signal-cli-usage-error
+       "store inventory-registry requires --adapter-count-min to be less than or equal to --adapter-count-max"
+       #'%print-store-usage))
+    (values (%normalize-filter-values (nreverse prefixes))
             created-before
             created-after
             adapter-count-min
@@ -926,6 +914,9 @@
      'vector)))
 
 (defun %parse-report-registry-args (args)
+  "Parse arguments for store report-registry command.
+  Uses reusable CLI parsing utilities from cli-util.lisp.
+  First positional arg is snapshot-id, remaining are options."
   (let ((snapshot-id nil)
         (licenses nil)
         (capabilities nil)
@@ -933,117 +924,73 @@
         (excluded-capabilities nil)
         (groups nil)
         (sort-mode "name")
-          (license-sort nil)
-          (capability-sort nil)
+        (license-sort nil)
+        (capability-sort nil)
         (limit nil)
         (offset nil)
-  (license-limit nil)
-  (license-offset nil)
-  (capability-limit nil)
-  (capability-offset nil)
+        (license-limit nil)
+        (license-offset nil)
+        (capability-limit nil)
+        (capability-offset nil)
         (output-path nil))
-    (loop while args
-          for argument = (pop args)
-          do (cond
-               ((string= argument "--license")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --license"
-                   #'%print-store-usage))
-                (push (pop args) licenses))
-               ((string= argument "--capability")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --capability"
-                   #'%print-store-usage))
-                (push (pop args) capabilities))
-               ((string= argument "--exclude-license")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --exclude-license"
-                   #'%print-store-usage))
-                (push (pop args) excluded-licenses))
-               ((string= argument "--exclude-capability")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --exclude-capability"
-                   #'%print-store-usage))
-                (push (pop args) excluded-capabilities))
-               ((string= argument "--group")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --group"
-                   #'%print-store-usage))
-                (push (%validate-report-group (pop args) "store report-registry") groups))
-               ((string= argument "--sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --sort"
-                   #'%print-store-usage))
-                (setf sort-mode (%validate-report-sort-mode (pop args) "store report-registry")))
-               ((string= argument "--license-sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --license-sort"
-                   #'%print-store-usage))
-                (setf license-sort (%validate-report-sort-mode (pop args) "store report-registry")))
-               ((string= argument "--capability-sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --capability-sort"
-                   #'%print-store-usage))
-                (setf capability-sort (%validate-report-sort-mode (pop args) "store report-registry")))
-               ((string= argument "--limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --limit"
-                   #'%print-store-usage))
-                (setf limit (%parse-non-negative-integer (pop args) "store report-registry")))
-               ((string= argument "--offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --offset"
-                   #'%print-store-usage))
-                (setf offset (%parse-non-negative-integer (pop args) "store report-registry")))
-               ((string= argument "--license-limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --license-limit"
-                   #'%print-store-usage))
-                (setf license-limit (%parse-non-negative-integer (pop args) "store report-registry")))
-               ((string= argument "--license-offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --license-offset"
-                   #'%print-store-usage))
-                (setf license-offset (%parse-non-negative-integer (pop args) "store report-registry")))
-               ((string= argument "--capability-limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --capability-limit"
-                   #'%print-store-usage))
-                (setf capability-limit (%parse-non-negative-integer (pop args) "store report-registry")))
-               ((string= argument "--capability-offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --capability-offset"
-                   #'%print-store-usage))
-                (setf capability-offset (%parse-non-negative-integer (pop args) "store report-registry")))
-               ((string= argument "--output")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store report-registry requires a value after --output"
-                   #'%print-store-usage))
-                (setf output-path (pop args)))
-               ((null snapshot-id)
-                (setf snapshot-id argument))
-               (t
-                (cl-py.internal:signal-cli-usage-error
-                 "store report-registry accepts exactly one snapshot id and optional filters"
-                 #'%print-store-usage))))
-    (unless snapshot-id
+    ;; First positional arg is snapshot-id
+    (if (null args)
+        (cl-py.internal:signal-cli-usage-error
+         "store report-registry requires a snapshot id"
+         #'%print-store-usage)
+        (setf snapshot-id (first args)))
+    (setf args (rest args))
+    ;; Parse repeatable options
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--license")
+                 (setf licenses vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--capability")
+                 (setf capabilities vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--exclude-license")
+                 (setf excluded-licenses vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--exclude-capability")
+                 (setf excluded-capabilities vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--group")
+                 (setf groups (mapcar (lambda (v) (%validate-report-group v "store report-registry")) vals))
+                 new-args))
+    ;; Parse single-value options
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--sort")
+      (setf args new-args)
+      (when val (setf sort-mode (%validate-report-sort-mode val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--license-sort")
+      (setf args new-args)
+      (when val (setf license-sort (%validate-report-sort-mode val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--capability-sort")
+      (setf args new-args)
+      (when val (setf capability-sort (%validate-report-sort-mode val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--limit")
+      (setf args new-args)
+      (when val (setf limit (%parse-non-negative-integer val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--offset")
+      (setf args new-args)
+      (when val (setf offset (%parse-non-negative-integer val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--license-limit")
+      (setf args new-args)
+      (when val (setf license-limit (%parse-non-negative-integer val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--license-offset")
+      (setf args new-args)
+      (when val (setf license-offset (%parse-non-negative-integer val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--capability-limit")
+      (setf args new-args)
+      (when val (setf capability-limit (%parse-non-negative-integer val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--capability-offset")
+      (setf args new-args)
+      (when val (setf capability-offset (%parse-non-negative-integer val "store report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--output")
+      (setf args new-args)
+      (when val (setf output-path val)))
+    ;; No extra args allowed
+    (when args
       (cl-py.internal:signal-cli-usage-error
-       "store report-registry requires a snapshot id"
+       "store report-registry accepts exactly one snapshot id and optional filters"
        #'%print-store-usage))
     (values snapshot-id
             (%normalize-filter-values (nreverse licenses))
@@ -1063,6 +1010,9 @@
             output-path)))
 
 (defun %parse-diff-report-registry-args (args)
+  "Parse arguments for store diff-report-registry command.
+  Uses reusable CLI parsing utilities from cli-util.lisp.
+  First two positional args are snapshot ids, remaining are options."
   (let ((left-snapshot-id nil)
         (right-snapshot-id nil)
         (licenses nil)
@@ -1075,119 +1025,75 @@
         (capability-sort nil)
         (limit nil)
         (offset nil)
-  (license-limit nil)
-  (license-offset nil)
-  (capability-limit nil)
-  (capability-offset nil)
+        (license-limit nil)
+        (license-offset nil)
+        (capability-limit nil)
+        (capability-offset nil)
         (output-path nil))
-    (loop while args
-          for argument = (pop args)
-          do (cond
-               ((string= argument "--license")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --license"
-                   #'%print-store-usage))
-                (push (pop args) licenses))
-               ((string= argument "--capability")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --capability"
-                   #'%print-store-usage))
-                (push (pop args) capabilities))
-               ((string= argument "--exclude-license")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --exclude-license"
-                   #'%print-store-usage))
-                (push (pop args) excluded-licenses))
-               ((string= argument "--exclude-capability")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --exclude-capability"
-                   #'%print-store-usage))
-                (push (pop args) excluded-capabilities))
-               ((string= argument "--group")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --group"
-                   #'%print-store-usage))
-                (push (%validate-report-group (pop args) "store diff-report-registry") groups))
-               ((string= argument "--sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --sort"
-                   #'%print-store-usage))
-                (setf sort-mode (%validate-diff-report-sort-mode (pop args))))
-               ((string= argument "--license-sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --license-sort"
-                   #'%print-store-usage))
-                (setf license-sort (%validate-diff-report-sort-mode (pop args))))
-               ((string= argument "--capability-sort")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --capability-sort"
-                   #'%print-store-usage))
-                (setf capability-sort (%validate-diff-report-sort-mode (pop args))))
-               ((string= argument "--limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --limit"
-                   #'%print-store-usage))
-                (setf limit (%parse-non-negative-integer (pop args) "store diff-report-registry")))
-               ((string= argument "--offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --offset"
-                   #'%print-store-usage))
-                (setf offset (%parse-non-negative-integer (pop args) "store diff-report-registry")))
-               ((string= argument "--license-limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --license-limit"
-                   #'%print-store-usage))
-                (setf license-limit (%parse-non-negative-integer (pop args) "store diff-report-registry")))
-               ((string= argument "--license-offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --license-offset"
-                   #'%print-store-usage))
-                (setf license-offset (%parse-non-negative-integer (pop args) "store diff-report-registry")))
-               ((string= argument "--capability-limit")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --capability-limit"
-                   #'%print-store-usage))
-                (setf capability-limit (%parse-non-negative-integer (pop args) "store diff-report-registry")))
-               ((string= argument "--capability-offset")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --capability-offset"
-                   #'%print-store-usage))
-                (setf capability-offset (%parse-non-negative-integer (pop args) "store diff-report-registry")))
-               ((string= argument "--output")
-                (unless args
-                  (cl-py.internal:signal-cli-usage-error
-                   "store diff-report-registry requires a value after --output"
-                   #'%print-store-usage))
-                (setf output-path (pop args)))
-               ((null left-snapshot-id)
-                (setf left-snapshot-id argument))
-               ((null right-snapshot-id)
-                (setf right-snapshot-id argument))
-               (t
-                (cl-py.internal:signal-cli-usage-error
-                 "store diff-report-registry accepts exactly two snapshot ids and optional filters"
-                 #'%print-store-usage))))
-    (unless left-snapshot-id
+    ;; First two positional args are snapshot ids
+    (if (null args)
+        (cl-py.internal:signal-cli-usage-error
+         "store diff-report-registry requires a left snapshot id"
+         #'%print-store-usage)
+        (setf left-snapshot-id (first args)))
+    (setf args (rest args))
+    (if (null args)
+        (cl-py.internal:signal-cli-usage-error
+         "store diff-report-registry requires a right snapshot id"
+         #'%print-store-usage)
+        (setf right-snapshot-id (first args)))
+    (setf args (rest args))
+    ;; Parse repeatable options
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--license")
+                 (setf licenses vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--capability")
+                 (setf capabilities vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--exclude-license")
+                 (setf excluded-licenses vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--exclude-capability")
+                 (setf excluded-capabilities vals)
+                 new-args))
+    (setf args (multiple-value-bind (new-args vals) (cl-py.internal:%parse-repeatable-option args "--group")
+                 (setf groups (mapcar (lambda (v) (%validate-report-group v "store diff-report-registry")) vals))
+                 new-args))
+    ;; Parse single-value options
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--sort")
+      (setf args new-args)
+      (when val (setf sort-mode (%validate-diff-report-sort-mode val))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--license-sort")
+      (setf args new-args)
+      (when val (setf license-sort (%validate-diff-report-sort-mode val))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--capability-sort")
+      (setf args new-args)
+      (when val (setf capability-sort (%validate-diff-report-sort-mode val))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--limit")
+      (setf args new-args)
+      (when val (setf limit (%parse-non-negative-integer val "store diff-report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--offset")
+      (setf args new-args)
+      (when val (setf offset (%parse-non-negative-integer val "store diff-report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--license-limit")
+      (setf args new-args)
+      (when val (setf license-limit (%parse-non-negative-integer val "store diff-report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--license-offset")
+      (setf args new-args)
+      (when val (setf license-offset (%parse-non-negative-integer val "store diff-report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--capability-limit")
+      (setf args new-args)
+      (when val (setf capability-limit (%parse-non-negative-integer val "store diff-report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--capability-offset")
+      (setf args new-args)
+      (when val (setf capability-offset (%parse-non-negative-integer val "store diff-report-registry"))))
+    (multiple-value-bind (new-args val) (cl-py.internal:%parse-option args "--output")
+      (setf args new-args)
+      (when val (setf output-path val)))
+    ;; No extra args allowed
+    (when args
       (cl-py.internal:signal-cli-usage-error
-       "store diff-report-registry requires a left snapshot id"
-       #'%print-store-usage))
-    (unless right-snapshot-id
-      (cl-py.internal:signal-cli-usage-error
-       "store diff-report-registry requires a right snapshot id"
+       "store diff-report-registry accepts exactly two snapshot ids and optional filters"
        #'%print-store-usage))
     (values left-snapshot-id
             right-snapshot-id

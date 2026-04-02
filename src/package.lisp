@@ -86,4 +86,9 @@
    #:parse-flag
    #:parse-option
    #:parse-repeatable-option
-   #:parse-required-option))
+   #:parse-required-option
+   ;; Internal CLI parsing helpers (used by store.lisp)
+   #:%parse-flag
+   #:%parse-option
+   #:%parse-repeatable-option
+   #:%parse-required-option))
