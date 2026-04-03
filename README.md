@@ -55,6 +55,10 @@ cl-py/
 │   ├── time.lisp
 │   ├── uri-http.lisp
 │   ├── yaml.lisp
+│   ├── html.lisp
+│   ├── xml.lisp
+│   ├── store.lisp
+│   ├── concurrency.lisp
 │   ├── manifest.lisp
 │   ├── registry.lisp
 │   ├── adapter.lisp
@@ -313,6 +317,19 @@ Current capabilities:
 - Self-closing tag support for br, hr, img, input, meta, link, etc.
 - Semantic HTML5 element support (header, footer, nav, main, article, section, aside, etc.)
 - Integration with store module via `report-registry-to-html`
+
+## Native XML Processing
+
+The eighth native Common Lisp capability slice adds XML parsing and generation.
+
+Current capabilities:
+
+- Parse XML text into `xml-element`/`xml-text` structures with zero external dependencies
+- Generate canonical XML text from structures
+- S-expression DSL via `xml-string` macro (e.g., `(xml-string (:root (:child :id "1" "Text")))`)
+- Query helpers: `xml-find-by-tag`, `xml-get-attribute`, `xml-get-text`
+- Support for self-closing tags, nested elements, attributes, and text content
+- Automatic stripping of XML comments and declarations
 
 ## CLI Enhancements
 
