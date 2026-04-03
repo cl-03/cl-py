@@ -137,19 +137,13 @@ sbcl --script scripts/dev-cli.lisp --eval '(cl-py:html-string (:html (:head (:ti
 sbcl --script scripts/dev-cli.lisp --eval '(cl-py:html-string (:div :class "box" (:p "Content")))'
 sbcl --script scripts/dev-cli.lisp --eval '(cl-py:html-string (:img :src "test.png"))'
 ```
-sbcl --script scripts/dev-cli.lisp store inventory-registry --limit 5
-sbcl --script scripts/dev-cli.lisp store inventory-registry --prefix nightly- --created-after 2026-03-29T12:00:00Z
-sbcl --script scripts/dev-cli.lisp store inventory-registry --adapter-count-min 3 --sort adapter-count-desc
-sbcl --script scripts/dev-cli.lisp store inventory-registry --sort adapter-count-desc --limit 5
-sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
-sbcl --script scripts/dev-cli.lisp packaging metadata
-sbcl --script scripts/dev-cli.lisp packaging normalize-version 1.0rc1
-sbcl --script scripts/dev-cli.lisp dateutil metadata
-sbcl --script scripts/dev-cli.lisp dateutil parse-isodatetime 2026-03-29T10:20:30+00:00
-sbcl --script scripts/dev-cli.lisp slugify metadata
-sbcl --script scripts/dev-cli.lisp slugify slugify-text "Hello Common Lisp"
-sbcl --script scripts/dev-cli.lisp jsonschema metadata
-sbcl --script scripts/dev-cli.lisp jsonschema validate-instance '{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}' '{"name":"cl-py"}'
+
+Use CLI output control flags:
+
+```bash
+sbcl --script scripts/dev-cli.lisp registry --output registry.txt
+sbcl --script scripts/dev-cli.lisp json normalize '{"b":2,"a":1}' --quiet
+sbcl --script scripts/dev-cli.lisp store list-registry --output snapshots.txt --quiet
 ```
 
 If Python is not on `PATH`, set:
@@ -319,6 +313,18 @@ Current capabilities:
 - Self-closing tag support for br, hr, img, input, meta, link, etc.
 - Semantic HTML5 element support (header, footer, nav, main, article, section, aside, etc.)
 - Integration with store module via `report-registry-to-html`
+
+## CLI Enhancements
+
+The seventh native Common Lisp capability slice adds output control flags for the CLI.
+
+Current capabilities:
+
+- `--output <file>` flag to redirect command output to a file
+- `--quiet` flag to suppress non-essential output
+- `%parse-global-flags` function for unified flag parsing
+- `%with-cli-output` macro for output redirection
+- `define-cli-command-with-output` DSL macro for commands with built-in output support
 
 ## First Adapter: packaging
 
