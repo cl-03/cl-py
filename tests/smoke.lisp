@@ -43,7 +43,23 @@
                 #:html-string
                 #:with-html-output
                 #:html-file
-                #:report-registry-to-html)
+                #:report-registry-to-html
+                ;; XML processing
+                #:parse-xml
+                #:generate-xml
+                #:xml-to-string
+                #:xml-string
+                #:xml-element-p
+                #:xml-text-p
+                #:xml-element-tag
+                #:xml-element-attributes
+                #:xml-element-children
+                #:xml-text-content
+                #:xml-find-by-tag
+                #:xml-get-attribute
+                #:xml-get-text
+                #:make-xml-element
+                #:make-xml-text)
   (:export #:run-tests))
 
 (in-package #:cl-py-tests)
@@ -1613,6 +1629,47 @@ active: true")))
                        (html-string (:form (:input :type "text" :name "q")))))
           "HTML DSL generates form elements"))
 
+(defun %xml-dsl-test ()
+  ;; Test XML parsing
+  (%check (xml-element-p (parse-xml "<root/>"))
+          "XML parser parses self-closing tag")
+  (%check (string= "root" (xml-element-tag (parse-xml "<root/>")))
+          "XML parser extracts tag name")
+  (%check (xml-element-p (parse-xml "<root><child/></root>"))
+          "XML parser parses nested elements")
+  (%check (= 1 (length (xml-element-children (parse-xml "<root><child/></root>"))))
+          "XML parser extracts children")
+  ;; Test attributes
+  (%check (string= "value" (xml-get-attribute (parse-xml "<root attr=\"value\"/>") "attr"))
+          "XML parser extracts attributes")
+  ;; Test text content
+  (%check (string= "Hello" (xml-get-text (parse-xml "<root>Hello</root>")))
+          "XML parser extracts text content")
+  ;; Test XML generation
+  (%check (search "<root/>" (xml-to-string (make-xml-element :tag "root")))
+          "XML generator creates self-closing tag")
+  (%check (and (search "<root>" (xml-to-string (make-xml-element :tag "root" :children (list (make-xml-text :content "text")))))
+               (search "text" (xml-to-string (make-xml-element :tag "root" :children (list (make-xml-text :content "text")))))
+               (search "</root>" (xml-to-string (make-xml-element :tag "root" :children (list (make-xml-text :content "text"))))))
+          "XML generator creates element with text")
+  ;; Test S-expression API
+  (%check (search "<root/>" (xml-string (:root)))
+          "XML S-expression API creates self-closing tag")
+  (%check (search "<root attr=\"value\"/>" (xml-string (:root :attr "value")))
+          "XML S-expression API creates attributes")
+  (%check (and (search "<root>" (xml-string (:root (:child))))
+               (search "<child/>" (xml-string (:root (:child))))
+               (search "</root>" (xml-string (:root (:child)))))
+          "XML S-expression API creates nested elements")
+  ;; Test query helpers
+  (let ((doc (parse-xml "<root><item id=\"1\">A</item><item id=\"2\">B</item></root>")))
+    (%check (= 2 (length (xml-find-by-tag doc "item")))
+            "XML find-by-tag finds multiple elements")
+    (%check (string= "1" (xml-get-attribute (car (xml-find-by-tag doc "item")) "id"))
+            "XML get-attribute retrieves attribute value")
+    (%check (string= "A" (xml-get-text (car (xml-find-by-tag doc "item"))))
+            "XML get-text retrieves text content")))
+
 (defun run-tests ()
   (setf *failures* 0)
   (%adapter-registry-test)
@@ -1651,6 +1708,7 @@ active: true")))
   (%optional-slugify-integration-test)
   (%optional-jsonschema-integration-test)
   (%html-dsl-test)
+  (%xml-dsl-test)
   (when (plusp *failures*)
     (error "Smoke tests failed: ~D" *failures*))
   (format t "All smoke tests completed.~%"))

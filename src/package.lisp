@@ -53,6 +53,22 @@
    #:html-string
    #:html-file
    #:report-registry-to-html
+   ;; XML processing
+   #:parse-xml
+   #:generate-xml
+   #:xml-to-string
+   #:xml-string
+   #:xml-element-p
+   #:xml-text-p
+   #:xml-element-tag
+   #:xml-element-attributes
+   #:xml-element-children
+   #:xml-text-content
+   #:xml-find-by-tag
+   #:xml-get-attribute
+   #:xml-get-text
+   #:make-xml-element
+   #:make-xml-text
    #:main))
 
 (defpackage #:cl-py.internal
