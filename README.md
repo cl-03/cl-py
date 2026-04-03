@@ -127,6 +127,16 @@ sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
 sbcl --script scripts/dev-cli.lisp store list-registry
+sbcl --script scripts/dev-cli.lisp jobs demo-batch 2
+```
+
+Generate HTML using the native DSL:
+
+```bash
+sbcl --script scripts/dev-cli.lisp --eval '(cl-py:html-string (:html (:head (:title "Test")) (:body (:h1 "Hello"))))'
+sbcl --script scripts/dev-cli.lisp --eval '(cl-py:html-string (:div :class "box" (:p "Content")))'
+sbcl --script scripts/dev-cli.lisp --eval '(cl-py:html-string (:img :src "test.png"))'
+```
 sbcl --script scripts/dev-cli.lisp store inventory-registry --limit 5
 sbcl --script scripts/dev-cli.lisp store inventory-registry --prefix nightly- --created-after 2026-03-29T12:00:00Z
 sbcl --script scripts/dev-cli.lisp store inventory-registry --adapter-count-min 3 --sort adapter-count-desc
@@ -294,6 +304,21 @@ Current capabilities:
 - Preserve input order in the returned result list
 - Capture per-task failures as structured results instead of aborting the full batch
 - Demonstrate the runner through the `jobs demo-batch` CLI command
+
+## Native HTML Generation DSL
+
+The sixth native Common Lisp capability slice adds a spinneret-inspired HTML generation DSL.
+
+Current capabilities:
+
+- Generate HTML from S-expression syntax with zero external dependencies
+- 50+ HTML5 element macros (html, head, body, div, span, table, form, etc.)
+- Automatic HTML escaping for content and attributes
+- Indentation-tracking output for pretty-printed HTML
+- `html-string`, `html-file`, and `with-html-output` macros
+- Self-closing tag support for br, hr, img, input, meta, link, etc.
+- Semantic HTML5 element support (header, footer, nav, main, article, section, aside, etc.)
+- Integration with store module via `report-registry-to-html`
 
 ## First Adapter: packaging
 
