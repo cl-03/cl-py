@@ -48,6 +48,11 @@
    #:parse-yaml
    #:emit-yaml
    #:normalize-yaml
+   ;; HTML generation DSL
+   #:with-html-output
+   #:html-string
+   #:html-file
+   #:report-registry-to-html
    #:main))
 
 (defpackage #:cl-py.internal

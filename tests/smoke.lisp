@@ -39,7 +39,11 @@
                 #:save-registry-snapshot
                 #:slugify-text
                 #:summarize-registry-snapshot
-                #:validate-jsonschema-instance)
+                #:validate-jsonschema-instance
+                #:html-string
+                #:with-html-output
+                #:html-file
+                #:report-registry-to-html)
   (:export #:run-tests))
 
 (in-package #:cl-py-tests)
@@ -1549,6 +1553,66 @@ active: true")))
                         (declare (ignore condition))
                         (format t "SKIP jsonschema integration requires Python + jsonschema~%"))))
 
+(defun %html-dsl-test ()
+  ;; Test basic HTML generation with keyword syntax (direct :tag form)
+  (%check (search "<html>"
+                  (html-string (:html (:head (:title "Test")) (:body (:h1 "Hello")))))
+          "HTML DSL generates basic document structure")
+  (%check (search "<title>Test</title>"
+                  (html-string (:html (:head (:title "Test")))))
+          "HTML DSL generates title element")
+  (%check (search "<h1>Hello</h1>"
+                  (html-string (:html (:body (:h1 "Hello")))))
+          "HTML DSL generates heading element")
+  ;; Test attributes
+  (%check (search "class=\"box\""
+                  (html-string (:div :class "box")))
+          "HTML DSL generates class attribute")
+  (%check (search "id=\"main\""
+                  (html-string (:div :id "main")))
+          "HTML DSL generates id attribute")
+  ;; Test nested elements
+  (%check (and (search "<div>" (html-string (:div (:p "Text"))))
+               (search "<p>Text</p>" (html-string (:div (:p "Text")))))
+          "HTML DSL generates nested elements")
+  ;; Test self-closing tags
+  (%check (search "<br/>"
+                  (html-string (:br)))
+          "HTML DSL generates self-closing br tag")
+  (%check (search "<img src=\"test.png\"/>"
+                  (html-string (:img :src "test.png")))
+          "HTML DSL generates self-closing img tag")
+  ;; Test HTML escaping
+  (%check (search "&lt;script&gt;"
+                  (html-string (:p "<script>")))
+          "HTML DSL escapes special characters in content")
+  (%check (search "&quot;"
+                  (html-string (:div :title "Say \"Hi\"")))
+          "HTML DSL escapes special characters in attributes")
+  ;; Test multiple attributes
+  (%check (and (search "class=\"btn\""
+                       (html-string (:button :class "btn" :id "submit" :type "button")))
+               (search "id=\"submit\""
+                       (html-string (:button :class "btn" :id "submit" :type "button"))))
+          "HTML DSL generates multiple attributes")
+  ;; Test semantic HTML5 elements
+  (%check (search "<header>"
+                  (html-string (:header (:nav (:a :href "/")))))
+          "HTML DSL generates semantic header element")
+  (%check (search "<article>"
+                  (html-string (:article (:section (:p "Content")))))
+          "HTML DSL generates semantic article element")
+  ;; Test list elements
+  (%check (and (search "<ul>" (html-string (:ul (:li "Item 1") (:li "Item 2"))))
+               (search "<li>Item 1</li>"
+                       (html-string (:ul (:li "Item 1") (:li "Item 2")))))
+          "HTML DSL generates unordered list")
+  ;; Test form elements
+  (%check (and (search "<form>" (html-string (:form (:input :type "text" :name "q"))))
+               (search "type=\"text\""
+                       (html-string (:form (:input :type "text" :name "q")))))
+          "HTML DSL generates form elements"))
+
 (defun run-tests ()
   (setf *failures* 0)
   (%adapter-registry-test)
@@ -1586,6 +1650,7 @@ active: true")))
   (%optional-dateutil-integration-test)
   (%optional-slugify-integration-test)
   (%optional-jsonschema-integration-test)
+  (%html-dsl-test)
   (when (plusp *failures*)
     (error "Smoke tests failed: ~D" *failures*))
   (format t "All smoke tests completed.~%"))
