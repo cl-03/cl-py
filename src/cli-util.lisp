@@ -81,3 +81,43 @@
         (signal-cli-usage-error
          (format nil "~A requires --~A" context option-name)
          #'print-cli-usage))))
+
+;;; ============================================================================
+;;; 通用选项解析器 - 借鉴 clingon 的选项批量解析设计
+;;; ============================================================================
+
+(defun %parse-all-options (args options-spec)
+  "Parse all options from args according to options-spec.
+  Returns (values remaining-args parsed-values-plist).
+
+  Example:
+    (%parse-all-options args
+      '((\"--prefix\" :short \"-p\" :dest 'prefix :default nil)
+        (\"--dry-run\" :dest 'dry-run :type :boolean :default nil)))"
+  (let ((remaining args)
+        (parsed nil))
+    (dolist (spec options-spec)
+      (let* ((name (first spec))
+             (short (getf (cdr spec) :short))
+             (dest (getf (cdr spec) :dest))
+             (type (getf (cdr spec) :type))
+             (default (getf (cdr spec) :default))
+             (value nil))
+        (cond
+          ((eq type :boolean)
+           (when (or (member name remaining :test #'string=)
+                     (when short (member short remaining :test #'string=)))
+             (setf value t)
+             (setf remaining (remove name remaining :test #'string=))
+             (when short
+               (setf remaining (remove short remaining :test #'string=)))))
+          (t
+           (let ((pos (or (position name remaining :test #'string=)
+                          (when short (position short remaining :test #'string=)))))
+             (when (and pos (< (1+ pos) (length remaining)))
+               (setf value (elt remaining (+ pos 1)))
+               (setf remaining (append (subseq remaining 0 pos)
+                                       (subseq remaining (+ pos 2))))))))
+        (when value
+          (setf parsed (list* dest value parsed)))))
+    (values remaining parsed)))

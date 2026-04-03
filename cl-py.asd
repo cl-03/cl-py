@@ -15,6 +15,7 @@
                (:file "src/json")
                (:file "src/time")
                (:file "src/uri-http")
+               (:file "src/yaml")
                (:file "src/store")
                (:file "src/concurrency")
                (:file "src/adapters/packaging")

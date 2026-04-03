@@ -12,6 +12,7 @@
                 #:delete-registry-snapshots
                 #:prune-registry-snapshots
                 #:emit-json
+                #:emit-yaml
                 #:fetch-json
                 #:fetch-text
                 #:find-adapter
@@ -26,10 +27,13 @@
                 #:normalize-uri
                 #:normalize-json
                 #:normalize-packaging-version
+                #:normalize-yaml
                 #:parse-json
                 #:parse-iso-timestamp
                 #:parse-dateutil-isodatetime
+                #:parse-yaml
                 #:registry-adapter-history
+                #:adapter-version-trend
                 #:report-registry-snapshot
                 #:run-bounded-task-batch
                 #:save-registry-snapshot
@@ -190,6 +194,46 @@
            "{\"a\":1,\"b\":[true,false,null],\"name\":\"cl-py\"}"
            (normalize-json "{\"name\":\"cl-py\",\"b\":[true,false,null],\"a\":1}"))
           "native json normalization produces canonical key ordering"))
+
+(defun %native-yaml-parse-test ()
+  (let* ((value (parse-yaml "name: cl-py
+active: true
+items:
+  - 1
+  - 2
+  - null"))
+         (entries (cdr value)))
+    (%check (and (consp value) (eq :object (car value)))
+            "native yaml parser preserves object identity")
+    (%check (string= "cl-py" (cdr (assoc "name" entries :test #'string=)))
+            "native yaml parser reads object string fields")
+    (%check (eq :true (cdr (assoc "active" entries :test #'string=)))
+            "native yaml parser preserves boolean values")
+    (let ((items (cdr (assoc "items" entries :test #'string=))))
+      (%check (and (vectorp items)
+                   (= 3 (length items))
+                   (eql 1 (aref items 0))
+                   (null (aref items 2)))
+              "native yaml parser reads nested arrays and null values"))))
+
+(defun %native-yaml-emit-test ()
+  (let* ((expected #.(format nil "name: cl-py~%active: true~%items:~%  - 1~%  - 2~%  - null"))
+         (actual (emit-yaml '(:object ("name" . "cl-py")
+                              ("active" . :true)
+                              ("items" . #(1 2 :null))))))
+    (format t "~%DEBUG emit - expected len: ~A, actual len: ~A~%" (length expected) (length actual))
+    (%check (string= expected actual)
+            "native yaml emitter serializes structured objects")))
+
+(defun %native-yaml-normalize-test ()
+  (let* ((expected (format nil "name: cl-py~%items:~%  - 1~%  - 2~%active: true"))
+         (actual (normalize-yaml "name: cl-py
+items:
+  - 1
+  - 2
+active: true")))
+    (%check (string= expected actual)
+            "native yaml normalization preserves structure")))
 
 (defun %native-time-parse-test ()
         (let ((timestamp (parse-iso-timestamp "2026-03-29T10:20:30Z")))
@@ -778,6 +822,7 @@
               (summary (summarize-registry-snapshot "baseline" :directory directory))
               (diff (diff-registry-snapshots "baseline" "nightly" :directory directory))
               (history (registry-adapter-history "jsonschema" :directory directory))
+              (version-trend (adapter-version-trend "packaging" :directory directory))
               (report (report-registry-snapshot "baseline" :directory directory))
               (sorted-report (report-registry-snapshot "baseline"
                                                       :directory directory
@@ -1051,6 +1096,12 @@
                  "native store adapter history returns one record per snapshot")
          (%check (eq :false (cdr (assoc "present" (cdr (aref history 1)) :test #'string=)))
                  "native store adapter history records adapter absence in later snapshots")
+         (%check (plusp (length version-trend))
+                 "native store adapter version trend returns trend records")
+         (%check (string= "packaging" (%json-object-entry (aref version-trend 0) "adapter-id"))
+                 "native store adapter version trend records correct adapter id")
+         (%check (vectorp version-trend)
+                 "native store adapter version trend returns vector result")
          (%check (vectorp (cdr (assoc "license-counts" report-entries :test #'string=)))
                  "native store report returns license aggregates")
          (%check (vectorp (cdr (assoc "capability-counts" report-entries :test #'string=)))
@@ -1509,6 +1560,9 @@
         (%native-json-parse-test)
         (%native-json-emit-test)
         (%native-json-normalize-test)
+        (%native-yaml-parse-test)
+        (%native-yaml-emit-test)
+        (%native-yaml-normalize-test)
   (%native-time-parse-test)
         (%native-time-basic-parse-test)
   (%native-time-offset-test)

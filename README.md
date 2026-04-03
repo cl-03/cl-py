@@ -54,9 +54,11 @@ cl-py/
 │   ├── json.lisp
 │   ├── time.lisp
 │   ├── uri-http.lisp
+│   ├── yaml.lisp
 │   ├── manifest.lisp
 │   ├── registry.lisp
 │   ├── adapter.lisp
+│   ├── cli-util.lisp
 │   ├── cli.lisp
 │   └── adapters/
 │       ├── dateutil.lisp
@@ -117,6 +119,10 @@ sbcl --script scripts/dev-cli.lisp json normalize '{"b":2,"a":1}'
 sbcl --script scripts/dev-cli.lisp time parse-iso 2026-03-29T10:20:30Z
 sbcl --script scripts/dev-cli.lisp time format-iso '(:timestamp :year 2026 :month 3 :day 29 :hour 10 :minute 20 :second 30 :offset-minutes 0)'
 sbcl --script scripts/dev-cli.lisp uri normalize HTTP://Example.COM:80/path?q=1
+sbcl --script scripts/dev-cli.lisp yaml parse 'name: cl-py'
+sbcl --script scripts/dev-cli.lisp yaml emit '(:object ("name" . "cl-py"))'
+sbcl --script scripts/dev-cli.lisp yaml normalize 'active: true
+name: cl-py'
 sbcl --script scripts/dev-cli.lisp http fetch-text http://127.0.0.1:8080/
 sbcl --script scripts/dev-cli.lisp http fetch-json http://127.0.0.1:8080/data
 sbcl --script scripts/dev-cli.lisp store snapshot-registry
@@ -220,6 +226,18 @@ Current constraints:
 
 - HTTPS is not implemented yet
 - The first transport slice targets SBCL because it uses native socket support
+
+## Native YAML Foundation
+
+The sixth native Common Lisp capability slice adds YAML parsing and emission.
+
+Current capabilities:
+
+- Parse YAML text into Common Lisp data structures (`:object` alists, vectors for arrays)
+- Emit Lisp data structures as YAML text
+- Normalize YAML strings through parse and re-emit
+- Accept CLI YAML input from inline text, `@file`, or standard input
+- Handle YAML comments, indentation, scalars, sequences, and mappings
 
 ## Native Registry Snapshot Store
 

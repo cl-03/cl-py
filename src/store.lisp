@@ -1519,6 +1519,23 @@
                   (cons "summary" (cdr (assoc "summary" (cdr adapter) :test #'string=)))))))
            'vector))
 
+        (defun adapter-version-trend (adapter-id &key directory)
+          "Analyze version trend for an adapter across all snapshots.
+          Returns a vector of objects with snapshot-id, created-at, and version fields."
+          (coerce
+           (loop for snapshot-id in (reverse (list-registry-snapshots :directory directory))
+             for snapshot = (load-registry-snapshot snapshot-id :directory directory)
+             for adapter = (%find-snapshot-adapter snapshot adapter-id)
+             for version = (when adapter
+                             (cdr (assoc "python-requirement" (cdr adapter) :test #'string=)))
+             collect (list :object
+                           (cons "snapshot-id" snapshot-id)
+                           (cons "created-at" (%snapshot-created-at snapshot))
+                           (cons "adapter-id" adapter-id)
+                           (cons "version" (or version "N/A"))
+                           (cons "present" (if adapter :true :false))))
+           'vector))
+
 (defun %print-store-usage ()
   (format t "  store snapshot-registry [snapshot-id]~%")
   (format t "  store list-registry~%")
@@ -1530,6 +1547,7 @@
   (format t "  store summarize-registry <snapshot-id>~%")
   (format t "  store diff-registry <left-snapshot-id> <right-snapshot-id>~%")
   (format t "  store adapter-history <adapter-id>~%")
+  (format t "  store adapter-version-trend <adapter-id>~%")
   (format t "  store report-registry <snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--group <license|capability>] [--sort <name|count-asc|count-desc>] [--license-sort <name|count-asc|count-desc>] [--capability-sort <name|count-asc|count-desc>] [--offset <n>] [--limit <n>] [--license-offset <n>] [--license-limit <n>] [--capability-offset <n>] [--capability-limit <n>] [--output <path>]~%")
   (format t "  store diff-report-registry <left-snapshot-id> <right-snapshot-id> [--license <license>] [--capability <capability>] [--exclude-license <license>] [--exclude-capability <capability>] [--group <license|capability>] [--sort <name|delta-asc|delta-desc|abs-delta-asc|abs-delta-desc>] [--license-sort <name|delta-asc|delta-desc|abs-delta-asc|abs-delta-desc>] [--capability-sort <name|delta-asc|delta-desc|abs-delta-asc|abs-delta-desc>] [--offset <n>] [--limit <n>] [--license-offset <n>] [--license-limit <n>] [--capability-offset <n>] [--capability-limit <n>] [--output <path>]~%"))
 
@@ -1559,6 +1577,7 @@
   (format t "  sbcl --script scripts/dev-cli.lisp store summarize-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store diff-registry baseline nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store adapter-history slugify~%")
+  (format t "  sbcl --script scripts/dev-cli.lisp store adapter-version-trend packaging~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text~%")
   (format t "  sbcl --script scripts/dev-cli.lisp store report-registry nightly --capability slugify-text --capability validate-instance~%")
@@ -1643,6 +1662,9 @@
 
 (defun %store-cli-adapter-history (adapter-id)
   (format t "~A~%" (emit-json (registry-adapter-history adapter-id))))
+
+(defun %store-cli-adapter-version-trend (adapter-id)
+  (format t "~A~%" (emit-json (adapter-version-trend adapter-id))))
 
 (defun %store-cli-report-registry (args)
   (multiple-value-bind (snapshot-id licenses capabilities excluded-licenses excluded-capabilities groups sort-mode license-sort capability-sort limit offset license-limit license-offset capability-limit capability-offset output-path)
@@ -1736,6 +1758,12 @@
        (%store-cli-adapter-history (second args))
        (cl-py.internal:signal-cli-usage-error
         "store adapter-history requires exactly one adapter id"
+        #'%print-store-usage)))
+    ((string= (first args) "adapter-version-trend")
+     (if (= (length (rest args)) 1)
+       (%store-cli-adapter-version-trend (second args))
+       (cl-py.internal:signal-cli-usage-error
+        "store adapter-version-trend requires exactly one adapter id"
         #'%print-store-usage)))
     ((string= (first args) "report-registry")
      (%store-cli-report-registry (rest args)))

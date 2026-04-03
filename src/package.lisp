@@ -37,6 +37,7 @@
    #:summarize-registry-snapshot
    #:diff-registry-snapshots
    #:registry-adapter-history
+   #:adapter-version-trend
    #:report-registry-snapshot
    #:diff-registry-snapshot-reports
    #:run-bounded-task-batch
@@ -44,6 +45,9 @@
     #:parse-dateutil-isodatetime
     #:slugify-text
    #:validate-jsonschema-instance
+   #:parse-yaml
+   #:emit-yaml
+   #:normalize-yaml
    #:main))
 
 (defpackage #:cl-py.internal
@@ -91,4 +95,5 @@
    #:%parse-flag
    #:%parse-option
    #:%parse-repeatable-option
-   #:%parse-required-option))
+   #:%parse-required-option
+   #:%parse-all-options))

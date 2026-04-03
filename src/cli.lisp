@@ -1,5 +1,142 @@
 (in-package #:cl-py)
 
+;;; ============================================================================
+;;; 宏定义命令注册 - 借鉴 clingon 的 defcommand 设计
+;;; ============================================================================
+
+(defmacro define-cli-command (name args-list &body body)
+  "Define a CLI command with automatic handler registration.
+
+  Similar to clingon's defcommand, this macro creates a command handler function
+  and provides a clean DSL for command definition.
+
+  Example:
+    (define-cli-command hello (name &key greeting)
+      :usage \"hello <name> [--greeting TEXT]\"
+      :summary \"Say hello to someone\"
+      (format t \"~A, ~A!\" (or greeting \"Hello\") name))"
+  (let ((handler-name (intern (format nil "%CLI-~A-HANDLER" (string-upcase name))
+                              (symbol-package name)))
+        (usage (getf (getf args-list '&key) :usage))
+        (summary (getf (getf args-list '&key) :summary)))
+    `(progn
+       (defun ,handler-name (args)
+         ,@body)
+       (register-top-level-cli-command
+        ,name
+        #',handler-name
+        :usage ,(or usage (format nil "~A [options]" name))
+        :summary ,(or summary "")
+        :detail-printer #',(or usage #'print-cli-usage)))))
+
+(defmacro define-adapter-command (adapter-id name args-list &body body)
+  "Define an adapter CLI command with automatic registration.
+
+  Example:
+    (define-adapter-command \"packaging\" normalize-version (version)
+      :summary \"Normalize a version string\"
+      (normalize-packaging-version version))"
+  (let ((handler-name (intern (format nil "%ADAPTER-~A-~A-HANDLER"
+                                      (string-upcase adapter-id)
+                                      (string-upcase name))
+                              (symbol-package name))))
+    `(progn
+       (defun ,handler-name (args)
+         ,@body)
+       (register-cli-command
+        ,adapter-id
+        ,name
+        #',handler-name
+        :summary ""
+        :min-args 0))))
+
+;;; ============================================================================
+;;; 结构化输出 DSL - 借鉴 spinneret 的标签式输出设计
+;;; ============================================================================
+
+(defstruct output-buffer
+  (stream nil)
+  (indent 0))
+
+(defmacro %with-output-buffer (&body body)
+  "Execute body with an output buffer stream."
+  `(with-output-to-string (stream)
+     (let ((buf (make-output-buffer :stream stream)))
+       ,@body)))
+
+(defmacro with-yaml-output (&body body)
+  "Generate YAML output using a spinneret-like DSL.
+
+  Example:
+    (with-yaml-output
+      (yaml-object
+        (yaml-key \"name\") (yaml-value \"cl-py\")
+        (yaml-key \"active\") (yaml-value t)))"
+  `(%with-output-buffer ,@body))
+
+(defun yaml-object (&rest pairs)
+  "Output a YAML object from key-value pairs."
+  (format nil "~{~A: ~A~^~%~}"
+          (loop for (k v) on pairs by #'cddr
+                collect (format nil "~A~%" k)
+                collect (format nil "~A" v))))
+
+(defun yaml-sequence (&rest items)
+  "Output a YAML sequence from items."
+  (format nil "~{  - ~A~%~}" items))
+
+;;; ============================================================================
+;;; 声明式选项解析 - 借鉴 clingon 的选项定义 DSL
+;;; ============================================================================
+
+(defstruct cli-option
+  "CLI option definition inspired by clingon's option DSL.
+
+  Fields:
+    name       - Long option name (e.g., \"--output\")
+    short      - Short option name (e.g., \"-o\")
+    dest       - Destination variable name
+    help       - Help text
+    metavar    - Value placeholder
+    default    - Default value
+    type       - Value type (:string, :integer, :boolean, :file)"
+  name
+  short
+  dest
+  help
+  metavar
+  default
+  type)
+
+;;; ============================================================================
+;;; 增强的 Help 生成 - 从命令元数据自动生成结构化 Help
+;;; ============================================================================
+
+(defun %render-command-help (command)
+  "Render structured help for a command from its metadata."
+  (when (typep command 'top-level-cli-command)
+    (format t "~%")
+    (format t "NAME:~%")
+    (format t "  ~A - ~A~%~%"
+            (top-level-cli-command-name command)
+            (top-level-cli-command-summary command))
+    (format t "USAGE:~%")
+    (format t "  ~A~%~%" (top-level-cli-command-usage command))
+    (format t "OPTIONS:~%")
+    (format t "  -h, --help     Show this help message~%")
+    (format t "~%")))
+
+(defun print-enhanced-help (command-name)
+  "Print enhanced help for a command with structured sections."
+  (let ((command (%find-top-level-cli-command command-name)))
+    (if command
+        (%render-command-help command)
+        (print-command-help command-name))))
+
+;;; ============================================================================
+;;; Original CLI functions preserved below
+;;; ============================================================================
+
 (defun %print-registry ()
   (dolist (adapter (list-adapters))
     (format t "~A~%" (adapter-id adapter))
