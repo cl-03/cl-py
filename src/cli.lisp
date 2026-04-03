@@ -195,3 +195,79 @@
  :usage "registry"
  :summary "List registered adapters with manifest metadata"
  :detail-printer #'%print-registry-usage)
+
+;;; ============================================================================
+;;; CLI Enhancements - Global flags for output control
+;;; ============================================================================
+
+(defvar *cli-output-file* nil
+  "Global output file path for --output flag.")
+
+(defvar *cli-quiet-p* nil
+  "Global quiet mode flag for --quiet flag.")
+
+(defun %parse-global-flags (args)
+  "Parse global flags from command line arguments.
+Returns (values remaining-args output-file quiet-p)."
+  (let ((output-file nil)
+        (quiet-p nil)
+        (remaining nil))
+    (loop for arg in args
+          do (cond
+               ((string= arg "--output")
+                (setf output-file t))
+               ((string= arg "--quiet")
+                (setf quiet-p t))
+               ((and output-file (eq output-file t))
+                (setf output-file arg))
+               ((and (string= (subseq arg 0 1) "-")
+                     (not (string= arg "-")))
+                ;; Unknown flag, skip
+                nil)
+               (t
+                (push arg remaining))))
+    (when (eq output-file t)
+      (error "missing value for --output"))
+    (values (nreverse remaining) output-file quiet-p)))
+
+(defmacro %with-cli-output (&body body)
+  "Execute body with CLI output redirection."
+  `(let ((output-stream (if *cli-output-file*
+                            (open *cli-output-file*
+                                  :direction :output
+                                  :if-exists :supersede
+                                  :if-does-not-exist :create)
+                            *standard-output*)))
+     (unwind-protect
+          (let ((*standard-output* output-stream))
+            ,@body)
+       (when *cli-output-file*
+         (close output-stream)))))
+
+(defmacro define-cli-command-with-output ((name args-list &key usage summary) &body body)
+  "Define a CLI command with automatic --output flag support.
+
+  Example:
+    (define-cli-command-with-output (hello (name &key greeting)
+                              :usage \"hello <name>\"
+                              :summary \"Say hello\")
+      (format t \"Hello, ~A!\" name))"
+  (let ((handler-name (intern (format nil "%CLI-~A-HANDLER" (string-upcase name))
+                              (symbol-package name))))
+    `(progn
+       (defun ,handler-name (args)
+         (let* ((values (%parse-global-flags args))
+                (remaining (svref values 0))
+                (output (svref values 1))
+                (quiet (svref values 2)))
+           (when output (setf *cli-output-file* output))
+           (when quiet (setf *cli-quiet-p* quiet))
+           (%with-cli-output
+             (let ((,args-list remaining))
+               ,@body))))
+       (register-top-level-cli-command
+        ,name
+        #',handler-name
+        :usage ,(or usage (format nil "~A [options]" name))
+        :summary ,(or summary "")
+        :detail-printer #',(or usage #'print-cli-usage)))))
